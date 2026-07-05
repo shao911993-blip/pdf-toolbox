@@ -1,0 +1,2012 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF 小工具箱</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --bg: #f1f5f9;
+    --card: #ffffff;
+    --text: #1e293b;
+    --text-light: #64748b;
+    --border: #e2e8f0;
+    --danger: #dc2626;
+    --success: #16a34a;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-tap-highlight-color: transparent;
+  }
+  header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 16px;
+    text-align: center;
+  }
+  header h1 { font-size: 20px; }
+  header p { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+  .container { max-width: 720px; margin: 0 auto; padding: 12px; }
+
+  /* 分頁 */
+  .tabs {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
+    margin-bottom: 12px;
+  }
+  .tab-btn {
+    padding: 10px 4px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card);
+    color: var(--text-light);
+    font-size: 13px;
+    cursor: pointer;
+    text-align: center;
+    line-height: 1.3;
+    transition: all .15s;
+  }
+  .tab-btn .icon { display: block; font-size: 20px; margin-bottom: 2px; }
+  .tab-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+  }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .card h2 { font-size: 16px; margin-bottom: 4px; }
+  .card .desc { font-size: 13px; color: var(--text-light); margin-bottom: 12px; }
+
+  /* 選檔區 */
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 24px 12px;
+    text-align: center;
+    color: var(--text-light);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--primary);
+    background: #eff6ff;
+    color: var(--primary);
+  }
+  .drop-zone .big { font-size: 28px; display: block; margin-bottom: 6px; }
+  input[type="file"] { display: none; }
+
+  /* 檔案清單 */
+  .file-list { list-style: none; margin-top: 12px; }
+  .file-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 6px;
+    background: #fafafa;
+    font-size: 13px;
+  }
+  .file-list .thumb {
+    width: 40px; height: 40px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: #fff;
+    flex-shrink: 0;
+  }
+  .file-list .fname {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .file-list .fmeta { color: var(--text-light); font-size: 12px; }
+  .mini-btn {
+    width: 32px; height: 32px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    flex-shrink: 0;
+    color: var(--text);
+  }
+  .mini-btn:hover { background: var(--bg); }
+  .mini-btn:disabled { opacity: .3; cursor: default; }
+  .mini-btn.del { color: var(--danger); }
+
+  /* 表單 */
+  label.field-label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 6px; }
+  input[type="text"], select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    background: #fff;
+    color: var(--text);
+  }
+  input[type="text"]:focus, select:focus { outline: 2px solid var(--primary); border-color: var(--primary); }
+  .hint { font-size: 12px; color: var(--text-light); margin-top: 4px; }
+  .estimate {
+    font-size: 13px;
+    color: var(--primary-dark);
+    background: #eff6ff;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-top: 12px;
+  }
+  .estimate:empty { display: none; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row > * { flex: 1; min-width: 120px; }
+
+  /* 按鈕 */
+  .btn {
+    display: inline-block;
+    width: 100%;
+    padding: 12px;
+    margin-top: 14px;
+    border: none;
+    border-radius: 10px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .btn:hover { background: var(--primary-dark); }
+  .btn:disabled { background: #94a3b8; cursor: default; }
+  .btn.secondary {
+    background: #fff;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+  }
+  .btn.secondary:hover { background: #eff6ff; }
+  .btn.secondary:disabled { color: #94a3b8; border-color: var(--border); background: #fff; }
+
+  /* 狀態訊息 */
+  .status { margin-top: 12px; font-size: 13px; display: none; border-radius: 8px; padding: 10px; }
+  .status.show { display: block; }
+  .status.info { background: #eff6ff; color: var(--primary-dark); }
+  .status.error { background: #fef2f2; color: var(--danger); }
+  .status.success { background: #f0fdf4; color: var(--success); }
+
+  /* 進度條 */
+  .progress-wrap { margin-top: 10px; display: none; }
+  .progress-wrap.show { display: block; }
+  .progress-bar {
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress-bar > div {
+    height: 100%;
+    width: 0%;
+    background: var(--primary);
+    border-radius: 4px;
+    transition: width .2s;
+  }
+  .progress-text { font-size: 12px; color: var(--text-light); margin-top: 4px; text-align: center; }
+
+  /* 轉圖片結果 */
+  .img-results {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .img-result {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fafafa;
+    text-align: center;
+  }
+  .img-result img { width: 100%; height: 120px; object-fit: contain; background: #fff; display: block; }
+  .img-result .cap { font-size: 12px; padding: 6px 4px 2px; color: var(--text-light); }
+  .img-result a {
+    display: block;
+    font-size: 13px;
+    color: var(--primary);
+    padding: 4px 4px 8px;
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  /* 頁面縮圖預覽 */
+  .thumb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .thumb-item {
+    position: relative;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    background: #fff;
+    transition: border-color .15s;
+  }
+  .thumb-item img { width: 100%; display: block; }
+  .thumb-item .pnum {
+    font-size: 11px;
+    text-align: center;
+    color: var(--text-light);
+    padding: 3px 2px;
+    background: #fafafa;
+    border-top: 1px solid var(--border);
+  }
+  .thumb-item.selected { border-color: var(--primary); }
+  .thumb-item.selected .pnum { background: var(--primary); color: #fff; }
+  .thumb-item.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 4px; right: 4px;
+    width: 20px; height: 20px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .thumb-zoom {
+    position: absolute;
+    top: 4px; left: 4px;
+    width: 26px; height: 26px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(255,255,255,.92);
+    font-size: 13px;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,.25);
+    line-height: 1;
+  }
+  .file-list .thumb { cursor: zoom-in; }
+
+  /* 全頁檢視器 */
+  .viewer {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, .88);
+    z-index: 100;
+    display: none;
+    flex-direction: column;
+  }
+  .viewer.show { display: flex; }
+  .viewer-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+    color: #fff;
+    font-size: 14px;
+  }
+  .viewer-top span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .viewer-top button {
+    background: rgba(255,255,255,.15);
+    border: none;
+    color: #fff;
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .viewer-body {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+  }
+  .viewer-body img {
+    max-width: 100%;
+    max-height: calc(100vh - 140px);
+    border-radius: 4px;
+    background: #fff;
+    box-shadow: 0 4px 24px rgba(0,0,0,.45);
+  }
+  .viewer-loading { color: #cbd5e1; font-size: 14px; }
+  .viewer-nav {
+    display: flex;
+    gap: 8px;
+    padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .viewer-nav button {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(255,255,255,.15);
+    color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .viewer-nav button:disabled { opacity: .35; cursor: default; }
+  .viewer-nav .vtoggle { background: var(--primary); font-weight: 600; }
+
+  .file-list .ph {
+    width: 40px; height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+    flex-shrink: 0;
+  }
+
+  .badge {
+    display: inline-block;
+    background: #eff6ff;
+    color: var(--primary-dark);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 12px;
+    margin-top: 8px;
+  }
+  footer {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-light);
+    padding: 16px 12px 24px;
+  }
+  @media (max-width: 480px) {
+    .tab-btn { font-size: 12px; padding: 8px 2px; }
+    header h1 { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📄 PDF 小工具箱</h1>
+  <p>所有處理都在您的裝置上完成，檔案不會上傳到任何伺服器</p>
+</header>
+
+<div class="container">
+
+  <!-- 分頁按鈕 -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="merge"><span class="icon">📑</span>PDF 合併</button>
+    <button class="tab-btn" data-tab="split"><span class="icon">✂️</span>刪頁/拆分</button>
+    <button class="tab-btn" data-tab="toimg"><span class="icon">🖼️</span>PDF 轉圖片</button>
+    <button class="tab-btn" data-tab="topdf"><span class="icon">📷</span>圖片轉 PDF</button>
+    <button class="tab-btn" data-tab="compress"><span class="icon">🗜️</span>PDF 壓縮</button>
+  </div>
+
+  <!-- ===== 功能 A：PDF 合併 ===== -->
+  <div class="panel active" id="panel-merge">
+    <div class="card">
+      <h2>PDF 合併</h2>
+      <p class="desc">上傳多個 PDF，調整順序後合併成一個檔案。</p>
+      <div class="drop-zone" id="mergeDrop">
+        <span class="big">📂</span>點擊選擇或拖曳多個 PDF 檔案到這裡
+      </div>
+      <input type="file" id="mergeInput" accept=".pdf,application/pdf" multiple>
+      <ul class="file-list" id="mergeList"></ul>
+      <div class="estimate" id="mergeEstimate"></div>
+      <button class="btn" id="mergeBtn">合併並下載 PDF</button>
+      <div class="progress-wrap" id="mergeProgress">
+        <div class="progress-bar"><div></div></div>
+        <div class="progress-text"></div>
+      </div>
+      <div class="status" id="mergeStatus"></div>
+    </div>
+  </div>
+
+  <!-- ===== 功能 B：刪頁 / 拆分 ===== -->
+  <div class="panel" id="panel-split">
+    <div class="card">
+      <h2>PDF 刪頁 / 拆分</h2>
+      <p class="desc">上傳一個 PDF，輸入要保留的頁碼，匯出成新的 PDF。</p>
+      <div class="drop-zone" id="splitDrop">
+        <span class="big">📂</span>點擊選擇或拖曳一個 PDF 檔案到這裡
+      </div>
+      <input type="file" id="splitInput" accept=".pdf,application/pdf">
+      <div id="splitInfo" style="display:none">
+        <span class="badge" id="splitBadge"></span>
+        <label class="field-label" for="splitPages">要保留的頁碼</label>
+        <input type="text" id="splitPages" inputmode="numeric" placeholder="例如：1,3,5-8">
+        <p class="hint">用逗號分隔頁碼，可用「-」表示範圍。也可以直接點下方的頁面預覽來勾選，點縮圖左上角的 🔍 可放大檢視整頁。</p>
+        <div class="thumb-grid" id="splitThumbs"></div>
+        <button class="btn secondary" id="splitMore" style="display:none">載入更多頁面預覽</button>
+      </div>
+      <div class="estimate" id="splitEstimate"></div>
+      <button class="btn" id="splitBtn">匯出新 PDF</button>
+      <div class="status" id="splitStatus"></div>
+    </div>
+  </div>
+
+  <!-- ===== 功能 C：PDF 轉圖片 ===== -->
+  <div class="panel" id="panel-toimg">
+    <div class="card">
+      <h2>PDF 轉圖片</h2>
+      <p class="desc">把 PDF 的指定頁面轉成 PNG 或 JPG 圖片。</p>
+      <div class="drop-zone" id="toimgDrop">
+        <span class="big">📂</span>點擊選擇或拖曳一個 PDF 檔案到這裡
+      </div>
+      <input type="file" id="toimgInput" accept=".pdf,application/pdf">
+      <div id="toimgInfo" style="display:none">
+        <span class="badge" id="toimgBadge"></span>
+        <label class="field-label" for="toimgPages">要轉換的頁碼</label>
+        <input type="text" id="toimgPages" inputmode="numeric" placeholder="例如：1,3,5-8（留空 = 全部頁面）">
+        <p class="hint">留空表示轉換全部頁面，也可以直接點下方的頁面預覽來勾選，點縮圖左上角的 🔍 可放大檢視整頁。一次轉換太多頁可能較慢，手機建議每次 10 頁以內。</p>
+        <div class="thumb-grid" id="toimgThumbs"></div>
+        <button class="btn secondary" id="toimgMore" style="display:none">載入更多頁面預覽</button>
+        <div class="row">
+          <div>
+            <label class="field-label" for="toimgFormat">圖片格式</label>
+            <select id="toimgFormat">
+              <option value="png">PNG（畫質佳）</option>
+              <option value="jpg">JPG（檔案小）</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label" for="toimgQuality">解析度</label>
+            <select id="toimgQuality">
+              <option value="1.5">一般</option>
+              <option value="2" selected>清晰</option>
+              <option value="3">高解析</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="estimate" id="toimgEstimate"></div>
+      <button class="btn" id="toimgBtn">開始轉換</button>
+      <div class="progress-wrap" id="toimgProgress">
+        <div class="progress-bar"><div></div></div>
+        <div class="progress-text"></div>
+      </div>
+      <div class="status" id="toimgStatus"></div>
+      <div class="img-results" id="toimgResults"></div>
+      <button class="btn secondary" id="toimgZipBtn" style="display:none">📦 全部打包下載（ZIP）</button>
+    </div>
+  </div>
+
+  <!-- ===== 功能 D：圖片轉 PDF ===== -->
+  <div class="panel" id="panel-topdf">
+    <div class="card">
+      <h2>圖片轉 PDF</h2>
+      <p class="desc">上傳多張 JPG / PNG / HEIC 圖片，合併成一個 PDF（每張圖一頁）。可選 A4 尺寸或依原始圖片尺寸。</p>
+      <div class="drop-zone" id="topdfDrop">
+        <span class="big">🖼️</span>點擊選擇或拖曳多張圖片到這裡
+      </div>
+      <input type="file" id="topdfInput" accept=".jpg,.jpeg,.png,.heic,.heif,image/jpeg,image/png,image/heic,image/heif" multiple>
+      <ul class="file-list" id="topdfList"></ul>
+      <div class="row" id="topdfOptions" style="display:none">
+        <div>
+          <label class="field-label" for="topdfSize">頁面尺寸</label>
+          <select id="topdfSize">
+            <option value="a4">A4 尺寸（圖片置中縮放）</option>
+            <option value="original">原始圖片尺寸（不留邊）</option>
+          </select>
+        </div>
+        <div id="topdfOrientWrap">
+          <label class="field-label" for="topdfOrient">紙張方向</label>
+          <select id="topdfOrient">
+            <option value="portrait">A4 直向</option>
+            <option value="landscape">A4 橫向</option>
+            <option value="auto">依照片自動</option>
+          </select>
+        </div>
+      </div>
+      <div class="estimate" id="topdfEstimate"></div>
+      <button class="btn" id="topdfBtn">產生並下載 PDF</button>
+      <div class="progress-wrap" id="topdfProgress">
+        <div class="progress-bar"><div></div></div>
+        <div class="progress-text"></div>
+      </div>
+      <div class="status" id="topdfStatus"></div>
+    </div>
+  </div>
+
+  <!-- ===== 功能 E：PDF 壓縮 ===== -->
+  <div class="panel" id="panel-compress">
+    <div class="card">
+      <h2>PDF 壓縮</h2>
+      <p class="desc">把 PDF 檔案變小。深度壓縮使用 Ghostscript 引擎，文字保持可選取；轉圖壓縮則把每頁變成圖片，當作備用方案。</p>
+      <div class="drop-zone" id="compressDrop">
+        <span class="big">📂</span>點擊選擇或拖曳一個 PDF 檔案到這裡
+      </div>
+      <input type="file" id="compressInput" accept=".pdf,application/pdf">
+      <div id="compressInfo" style="display:none">
+        <span class="badge" id="compressBadge"></span>
+        <div class="row">
+          <div>
+            <label class="field-label" for="compressMode">壓縮方式</label>
+            <select id="compressMode">
+              <option value="deep" selected>深度壓縮（保留文字，推薦）</option>
+              <option value="raster">轉圖壓縮（相容模式）</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label" for="compressLevel">壓縮強度</label>
+            <select id="compressLevel">
+              <option value="light">輕度壓縮（畫質優先）</option>
+              <option value="medium" selected>中度壓縮（建議）</option>
+              <option value="strong">強力壓縮（檔案最小）</option>
+            </select>
+          </div>
+        </div>
+        <p class="hint" id="compressHint"></p>
+      </div>
+      <div class="estimate" id="compressEstimate"></div>
+      <button class="btn" id="compressBtn">開始壓縮</button>
+      <div class="progress-wrap" id="compressProgress">
+        <div class="progress-bar"><div></div></div>
+        <div class="progress-text"></div>
+      </div>
+      <div class="status" id="compressStatus"></div>
+      <button class="btn secondary" id="compressDownloadBtn" style="display:none"></button>
+    </div>
+  </div>
+
+</div>
+
+<footer>PDF 小工具箱 · 純瀏覽器本機處理，不需要網路上傳檔案<br>
+深度壓縮功能使用 <a href="https://www.ghostscript.com/" target="_blank" rel="noopener">Ghostscript</a>（AGPL-3.0，<a href="https://github.com/jsscheller/ghostscript-wasm" target="_blank" rel="noopener">WASM 版原始碼</a>）</footer>
+
+<!-- 全頁檢視器 -->
+<div class="viewer" id="viewer">
+  <div class="viewer-top">
+    <span id="viewerCap"></span>
+    <button type="button" id="viewerClose" title="關閉">✕</button>
+  </div>
+  <div class="viewer-body" id="viewerBody">
+    <div class="viewer-loading" id="viewerLoading">載入中…</div>
+    <img id="viewerImg" alt="頁面預覽" style="display:none">
+  </div>
+  <div class="viewer-nav">
+    <button type="button" id="viewerPrev">‹ 上一頁</button>
+    <button type="button" id="viewerToggle" class="vtoggle">☐ 勾選此頁</button>
+    <button type="button" id="viewerNext">下一頁 ›</button>
+  </div>
+</div>
+
+<!-- CDN 套件 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 共用工具 ================= */
+
+  var PDFLib = window.PDFLib;
+  var pdfjsLib = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
+  if (pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
+  function $(id) { return document.getElementById(id); }
+
+  function showStatus(el, type, msg) {
+    el.className = 'status show ' + type;
+    el.textContent = msg;
+  }
+  function hideStatus(el) { el.className = 'status'; el.textContent = ''; }
+
+  function setProgress(wrap, done, total, label) {
+    wrap.classList.add('show');
+    wrap.querySelector('.progress-bar > div').style.width =
+      Math.round((done / total) * 100) + '%';
+    wrap.querySelector('.progress-text').textContent =
+      label + '（' + done + ' / ' + total + '）';
+  }
+  function hideProgress(wrap) {
+    wrap.classList.remove('show');
+    wrap.querySelector('.progress-bar > div').style.width = '0%';
+  }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+
+  function downloadBlob(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+  }
+
+  // 讓瀏覽器有機會更新畫面（避免長時間卡住）
+  function nextFrame() {
+    return new Promise(function (r) { setTimeout(r, 30); });
+  }
+
+  // 檢查檔案是否為 PDF（副檔名 + 檔頭 %PDF）
+  function isPdfFile(file) {
+    return new Promise(function (resolve) {
+      var nameOk = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+      if (!nameOk) { resolve(false); return; }
+      var reader = new FileReader();
+      reader.onload = function () {
+        var bytes = new Uint8Array(reader.result);
+        var head = '';
+        for (var i = 0; i < Math.min(bytes.length, 1024); i++) {
+          head += String.fromCharCode(bytes[i]);
+        }
+        resolve(head.indexOf('%PDF') !== -1);
+      };
+      reader.onerror = function () { resolve(false); };
+      reader.readAsArrayBuffer(file.slice(0, 1024));
+    });
+  }
+
+  // 解析頁碼字串「1,3,5-8」→ [1,3,5,6,7,8]，錯誤時 throw
+  function parsePageRange(text, totalPages) {
+    var result = [];
+    var parts = text.replace(/，/g, ',').replace(/\s+/g, '').split(',');
+    for (var i = 0; i < parts.length; i++) {
+      var part = parts[i];
+      if (!part) continue;
+      var m = part.match(/^(\d+)(?:-(\d+))?$/);
+      if (!m) throw new Error('「' + part + '」不是有效的頁碼格式');
+      var start = parseInt(m[1], 10);
+      var end = m[2] ? parseInt(m[2], 10) : start;
+      if (start < 1 || end < 1) throw new Error('頁碼必須從 1 開始');
+      if (start > end) throw new Error('「' + part + '」範圍起始不能大於結束');
+      if (end > totalPages) throw new Error('「' + part + '」超過總頁數（共 ' + totalPages + ' 頁）');
+      for (var p = start; p <= end; p++) result.push(p);
+    }
+    if (result.length === 0) throw new Error('請輸入至少一個頁碼');
+    return result;
+  }
+
+  var IS_MOBILE = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+
+  // 把頁碼陣列壓縮成「1,3,5-8」格式
+  function pagesToRangeText(arr) {
+    arr = arr.slice().sort(function (a, b) { return a - b; });
+    var parts = [];
+    var i = 0;
+    while (i < arr.length) {
+      var j = i;
+      while (j + 1 < arr.length && arr[j + 1] === arr[j] + 1) j++;
+      parts.push(j > i ? arr[i] + '-' + arr[j] : String(arr[i]));
+      i = j + 1;
+    }
+    return parts.join(',');
+  }
+
+  /* 全頁檢視器（燈箱）：顯示單頁大圖，可翻頁、可勾選 */
+  var Viewer = (function () {
+    var el = $('viewer');
+    var imgEl = $('viewerImg');
+    var capEl = $('viewerCap');
+    var loadEl = $('viewerLoading');
+    var prevBtn = $('viewerPrev');
+    var nextBtn = $('viewerNext');
+    var togBtn = $('viewerToggle');
+    var opts = null;
+    var index = 0;
+    var token = 0; // 快速翻頁時丟棄過期的渲染結果
+
+    function open(o) {
+      opts = o;
+      index = o.index;
+      el.classList.add('show');
+      document.body.style.overflow = 'hidden';
+      render();
+    }
+
+    function close() {
+      token++;
+      opts = null;
+      el.classList.remove('show');
+      document.body.style.overflow = '';
+      imgEl.src = '';
+    }
+
+    async function render() {
+      if (!opts) return;
+      var t = ++token;
+      capEl.textContent = opts.caption(index);
+      var single = opts.min === opts.max;
+      prevBtn.style.display = single ? 'none' : '';
+      nextBtn.style.display = single ? 'none' : '';
+      prevBtn.disabled = index <= opts.min;
+      nextBtn.disabled = index >= opts.max;
+      updateToggle();
+      imgEl.style.display = 'none';
+      loadEl.style.display = 'block';
+      loadEl.textContent = '載入中…';
+      try {
+        var src = await opts.getImage(index);
+        if (t !== token) return;
+        imgEl.src = src;
+        imgEl.style.display = 'block';
+        loadEl.style.display = 'none';
+      } catch (e) {
+        if (t !== token) return;
+        loadEl.textContent = '這一頁的預覽載入失敗';
+      }
+    }
+
+    function updateToggle() {
+      if (opts && opts.onToggle) {
+        togBtn.style.display = '';
+        togBtn.textContent = opts.isSelected(index)
+          ? '✅ 已勾選（點一下取消）'
+          : '☐ 勾選此頁';
+      } else {
+        togBtn.style.display = 'none';
+      }
+    }
+
+    prevBtn.addEventListener('click', function () {
+      if (opts && index > opts.min) { index--; render(); }
+    });
+    nextBtn.addEventListener('click', function () {
+      if (opts && index < opts.max) { index++; render(); }
+    });
+    togBtn.addEventListener('click', function () {
+      if (opts && opts.onToggle) { opts.onToggle(index); updateToggle(); }
+    });
+    $('viewerClose').addEventListener('click', close);
+    el.addEventListener('click', function (e) {
+      if (e.target === el || e.target === $('viewerBody')) close();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (!el.classList.contains('show')) return;
+      if (e.key === 'Escape') close();
+      else if (e.key === 'ArrowLeft') prevBtn.click();
+      else if (e.key === 'ArrowRight') nextBtn.click();
+    });
+
+    return { open: open };
+  })();
+
+  /* 頁面縮圖預覽選擇器：點縮圖勾選頁面，與輸入框雙向同步 */
+  function makePageSelector(containerId, moreBtnId, inputId) {
+    var container = $(containerId);
+    var moreBtn = $(moreBtnId);
+    var input = $(inputId);
+    var BATCH = IS_MOBILE ? 12 : 24;
+    var state = { doc: null, total: 0, selected: {}, items: {}, rendered: 0, gen: 0 };
+
+    function clear() {
+      state.gen++; // 讓進行中的渲染迴圈中止
+      if (state.doc) { state.doc.destroy(); state.doc = null; }
+      container.innerHTML = '';
+      moreBtn.style.display = 'none';
+      state.total = 0;
+      state.selected = {};
+      state.items = {};
+      state.rendered = 0;
+    }
+
+    // 讀取 PDF 並渲染第一批縮圖，回傳總頁數
+    async function load(file) {
+      clear();
+      var buf = await file.arrayBuffer();
+      state.doc = await pdfjsLib.getDocument({ data: buf }).promise;
+      state.total = state.doc.numPages;
+      // 記錄第 1 頁的原始尺寸（給檔案大小預估用）
+      var p1 = await state.doc.getPage(1);
+      var v1 = p1.getViewport({ scale: 1 });
+      state.baseW = v1.width;
+      state.baseH = v1.height;
+      p1.cleanup();
+      await renderBatch();
+      return state.total;
+    }
+
+    async function renderBatch() {
+      moreBtn.style.display = 'none';
+      moreBtn.disabled = true;
+      var gen = state.gen;
+      var end = Math.min(state.total, state.rendered + BATCH);
+      for (var p = state.rendered + 1; p <= end; p++) {
+        if (gen !== state.gen || !state.doc) return; // 已被清除（使用者換了檔案）
+        try {
+          await renderThumb(p, gen);
+        } catch (e) { /* 單頁預覽失敗不影響其他頁 */ }
+        if (gen !== state.gen) return;
+        if (p % 4 === 0) await nextFrame();
+      }
+      state.rendered = end;
+      moreBtn.disabled = false;
+      if (end < state.total) {
+        moreBtn.style.display = 'block';
+        moreBtn.textContent = '載入更多頁面預覽（還有 ' + (state.total - end) + ' 頁）';
+      }
+    }
+
+    async function renderThumb(pageNum, gen) {
+      var page = await state.doc.getPage(pageNum);
+      var base = page.getViewport({ scale: 1 });
+      var targetW = 150 * Math.min(window.devicePixelRatio || 1, 2);
+      var vp = page.getViewport({ scale: targetW / base.width });
+      var canvas = document.createElement('canvas');
+      canvas.width = Math.floor(vp.width);
+      canvas.height = Math.floor(vp.height);
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      page.cleanup();
+
+      var div = document.createElement('div');
+      div.className = 'thumb-item';
+      var img = document.createElement('img');
+      img.src = canvas.toDataURL('image/jpeg', 0.7);
+      img.alt = '第 ' + pageNum + ' 頁';
+      div.appendChild(img);
+      var cap = document.createElement('div');
+      cap.className = 'pnum';
+      cap.textContent = '第 ' + pageNum + ' 頁';
+      div.appendChild(cap);
+      canvas.width = canvas.height = 0;
+
+      if (gen !== state.gen) return; // 渲染期間使用者換了檔案，丟棄結果
+      div.addEventListener('click', function () { toggle(pageNum); });
+
+      var zoom = document.createElement('button');
+      zoom.type = 'button';
+      zoom.className = 'thumb-zoom';
+      zoom.textContent = '🔍';
+      zoom.title = '放大檢視整頁';
+      zoom.addEventListener('click', function (e) {
+        e.stopPropagation(); // 不要觸發勾選
+        openFull(pageNum);
+      });
+      div.appendChild(zoom);
+
+      state.items[pageNum] = div;
+      updateItem(pageNum);
+      container.appendChild(div);
+    }
+
+    // 渲染單頁高解析度大圖（給全頁檢視器用）
+    async function renderFullPage(pageNum) {
+      if (!state.doc) throw new Error('檔案已被清除');
+      var page = await state.doc.getPage(pageNum);
+      var base = page.getViewport({ scale: 1 });
+      var maxDim = IS_MOBILE ? 1600 : 2400;
+      var scale = Math.min(maxDim / Math.max(base.width, base.height), 3);
+      var vp = page.getViewport({ scale: scale });
+      var canvas = document.createElement('canvas');
+      canvas.width = Math.floor(vp.width);
+      canvas.height = Math.floor(vp.height);
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      page.cleanup();
+      var url = canvas.toDataURL('image/jpeg', 0.85);
+      canvas.width = canvas.height = 0;
+      return url;
+    }
+
+    function openFull(pageNum) {
+      Viewer.open({
+        index: pageNum,
+        min: 1,
+        max: state.total,
+        caption: function (p) { return '第 ' + p + ' 頁 / 共 ' + state.total + ' 頁'; },
+        getImage: renderFullPage,
+        isSelected: function (p) { return !!state.selected[p]; },
+        onToggle: toggle
+      });
+    }
+
+    function updateItem(pageNum) {
+      var el = state.items[pageNum];
+      if (el) el.classList.toggle('selected', !!state.selected[pageNum]);
+    }
+
+    function toggle(pageNum) {
+      if (state.selected[pageNum]) delete state.selected[pageNum];
+      else state.selected[pageNum] = true;
+      updateItem(pageNum);
+      input.value = pagesToRangeText(Object.keys(state.selected).map(Number));
+      // 通知外部（例如檔案大小預估）輸入值變了
+      input.dispatchEvent(new Event('input'));
+    }
+
+    // 輸入框改變時，同步縮圖勾選狀態（格式錯誤時先不動）
+    input.addEventListener('input', function () {
+      var text = input.value.trim();
+      var pages = [];
+      if (text) {
+        try { pages = parsePageRange(text, state.total); }
+        catch (e) { return; }
+      }
+      state.selected = {};
+      pages.forEach(function (p) { state.selected[p] = true; });
+      Object.keys(state.items).forEach(function (p) { updateItem(Number(p)); });
+    });
+
+    moreBtn.addEventListener('click', renderBatch);
+
+    return {
+      load: load,
+      clear: clear,
+      getPageSize: function () {
+        return state.doc ? { width: state.baseW, height: state.baseH } : null;
+      }
+    };
+  }
+
+  // 產生 PDF 第一頁的小縮圖（給合併清單用），失敗時回傳 null
+  async function firstPageThumb(file) {
+    if (!pdfjsLib) return null;
+    var doc = null;
+    try {
+      var buf = await file.arrayBuffer();
+      doc = await pdfjsLib.getDocument({ data: buf }).promise;
+      var page = await doc.getPage(1);
+      var base = page.getViewport({ scale: 1 });
+      var vp = page.getViewport({ scale: 80 / base.width });
+      var canvas = document.createElement('canvas');
+      canvas.width = Math.floor(vp.width);
+      canvas.height = Math.floor(vp.height);
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      page.cleanup();
+      var url = canvas.toDataURL('image/jpeg', 0.7);
+      canvas.width = canvas.height = 0;
+      return url;
+    } catch (e) {
+      return null;
+    } finally {
+      if (doc) doc.destroy();
+    }
+  }
+
+  // 設定拖曳與點擊選檔
+  function setupDropZone(zoneEl, inputEl, onFiles) {
+    zoneEl.addEventListener('click', function () { inputEl.click(); });
+    inputEl.addEventListener('change', function () {
+      if (inputEl.files.length) onFiles(Array.prototype.slice.call(inputEl.files));
+      inputEl.value = '';
+    });
+    zoneEl.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      zoneEl.classList.add('dragover');
+    });
+    zoneEl.addEventListener('dragleave', function () {
+      zoneEl.classList.remove('dragover');
+    });
+    zoneEl.addEventListener('drop', function (e) {
+      e.preventDefault();
+      zoneEl.classList.remove('dragover');
+      if (e.dataTransfer.files.length) {
+        onFiles(Array.prototype.slice.call(e.dataTransfer.files));
+      }
+    });
+  }
+
+  /* ================= 分頁切換 ================= */
+
+  var tabBtns = document.querySelectorAll('.tab-btn');
+  tabBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      tabBtns.forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      $('panel-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  /* ================= 功能 A：PDF 合併 ================= */
+
+  var mergeFiles = []; // { file, name, size }
+
+  setupDropZone($('mergeDrop'), $('mergeInput'), function (files) {
+    hideStatus($('mergeStatus'));
+    var checks = files.map(function (f) {
+      return isPdfFile(f).then(function (ok) {
+        if (ok) {
+          mergeFiles.push({ file: f, name: f.name, size: f.size });
+        } else {
+          showStatus($('mergeStatus'), 'error', '「' + f.name + '」不是 PDF 檔案，已略過。');
+        }
+      });
+    });
+    Promise.all(checks).then(function () {
+      renderMergeList();
+      generateMergeThumbs();
+    });
+  });
+
+  // 逐一產生清單縮圖（一次一個，避免佔用太多記憶體）
+  var mergeThumbBusy = false;
+  async function generateMergeThumbs() {
+    if (mergeThumbBusy) return;
+    mergeThumbBusy = true;
+    try {
+      for (var i = 0; i < mergeFiles.length; i++) {
+        var item = mergeFiles[i];
+        if (!item || item.thumb !== undefined) continue;
+        item.thumb = await firstPageThumb(item.file);
+        renderMergeList();
+        await nextFrame();
+      }
+    } finally {
+      mergeThumbBusy = false;
+    }
+  }
+
+  function updateMergeEstimate() {
+    var el = $('mergeEstimate');
+    if (mergeFiles.length < 2) { el.textContent = ''; return; }
+    var total = mergeFiles.reduce(function (s, f) { return s + f.size; }, 0);
+    el.textContent = '📦 預估合併後大小：約 ' + formatSize(total) + '（實際大小可能略小）';
+  }
+
+  function renderMergeList() {
+    var ul = $('mergeList');
+    ul.innerHTML = '';
+    updateMergeEstimate();
+    mergeFiles.forEach(function (item, idx) {
+      var li = document.createElement('li');
+
+      var num = document.createElement('span');
+      num.textContent = (idx + 1) + '.';
+      num.style.color = 'var(--text-light)';
+      li.appendChild(num);
+
+      if (item.thumb) {
+        var thumb = document.createElement('img');
+        thumb.className = 'thumb';
+        thumb.src = item.thumb;
+        thumb.alt = '';
+        thumb.title = '點一下放大檢視第 1 頁';
+        thumb.addEventListener('click', function () { openMergePreview(idx); });
+        li.appendChild(thumb);
+      } else {
+        var ph = document.createElement('span');
+        ph.className = 'ph';
+        ph.textContent = '📄';
+        li.appendChild(ph);
+      }
+
+      var name = document.createElement('span');
+      name.className = 'fname';
+      name.textContent = item.name;
+      li.appendChild(name);
+
+      var meta = document.createElement('span');
+      meta.className = 'fmeta';
+      meta.textContent = formatSize(item.size);
+      li.appendChild(meta);
+
+      li.appendChild(makeMiniBtn('▲', idx === 0, function () {
+        var t = mergeFiles[idx - 1]; mergeFiles[idx - 1] = mergeFiles[idx]; mergeFiles[idx] = t;
+        renderMergeList();
+      }));
+      li.appendChild(makeMiniBtn('▼', idx === mergeFiles.length - 1, function () {
+        var t = mergeFiles[idx + 1]; mergeFiles[idx + 1] = mergeFiles[idx]; mergeFiles[idx] = t;
+        renderMergeList();
+      }));
+      li.appendChild(makeMiniBtn('✕', false, function () {
+        mergeFiles.splice(idx, 1);
+        renderMergeList();
+      }, true));
+
+      ul.appendChild(li);
+    });
+  }
+
+  // 合併清單的大圖預覽：即時渲染該檔案的第 1 頁
+  async function renderMergeFirstPageFull(i) {
+    var item = mergeFiles[i];
+    if (!item || !pdfjsLib) throw new Error('無法預覽');
+    var buf = await item.file.arrayBuffer();
+    var doc = await pdfjsLib.getDocument({ data: buf }).promise;
+    try {
+      var page = await doc.getPage(1);
+      var base = page.getViewport({ scale: 1 });
+      var maxDim = IS_MOBILE ? 1600 : 2400;
+      var scale = Math.min(maxDim / Math.max(base.width, base.height), 3);
+      var vp = page.getViewport({ scale: scale });
+      var canvas = document.createElement('canvas');
+      canvas.width = Math.floor(vp.width);
+      canvas.height = Math.floor(vp.height);
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      page.cleanup();
+      var url = canvas.toDataURL('image/jpeg', 0.85);
+      canvas.width = canvas.height = 0;
+      return url;
+    } finally {
+      doc.destroy();
+    }
+  }
+
+  function openMergePreview(idx) {
+    Viewer.open({
+      index: idx,
+      min: 0,
+      max: mergeFiles.length - 1,
+      caption: function (i) {
+        return mergeFiles[i] ? mergeFiles[i].name + '（第 1 頁預覽）' : '';
+      },
+      getImage: renderMergeFirstPageFull
+    });
+  }
+
+  function makeMiniBtn(label, disabled, onClick, isDel) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'mini-btn' + (isDel ? ' del' : '');
+    b.textContent = label;
+    b.disabled = disabled;
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  $('mergeBtn').addEventListener('click', async function () {
+    var status = $('mergeStatus');
+    var progress = $('mergeProgress');
+    hideStatus(status);
+    if (mergeFiles.length === 0) {
+      showStatus(status, 'error', '請先選擇 PDF 檔案。');
+      return;
+    }
+    if (mergeFiles.length === 1) {
+      showStatus(status, 'error', '至少需要 2 個 PDF 才能合併。');
+      return;
+    }
+    var btn = $('mergeBtn');
+    btn.disabled = true;
+    try {
+      var merged = await PDFLib.PDFDocument.create();
+      for (var i = 0; i < mergeFiles.length; i++) {
+        setProgress(progress, i, mergeFiles.length, '正在合併 ' + mergeFiles[i].name);
+        await nextFrame();
+        var buf = await mergeFiles[i].file.arrayBuffer();
+        var src;
+        try {
+          src = await PDFLib.PDFDocument.load(buf, { ignoreEncryption: true });
+        } catch (e) {
+          throw new Error('無法讀取「' + mergeFiles[i].name + '」，檔案可能已損毀或有密碼保護。');
+        }
+        var pages = await merged.copyPages(src, src.getPageIndices());
+        pages.forEach(function (p) { merged.addPage(p); });
+      }
+      setProgress(progress, mergeFiles.length, mergeFiles.length, '正在輸出檔案');
+      var bytes = await merged.save();
+      var outBlob = new Blob([bytes], { type: 'application/pdf' });
+      downloadBlob(outBlob, '合併結果.pdf');
+      showStatus(status, 'success', '✅ 合併完成，共 ' + merged.getPageCount() + ' 頁（' +
+        formatSize(outBlob.size) + '），已開始下載。');
+    } catch (err) {
+      showStatus(status, 'error', '合併失敗：' + err.message);
+    } finally {
+      hideProgress(progress);
+      btn.disabled = false;
+    }
+  });
+
+  /* ================= 功能 B：刪頁 / 拆分 ================= */
+
+  var splitFile = null;
+  var splitTotalPages = 0;
+  var splitSelector = makePageSelector('splitThumbs', 'splitMore', 'splitPages');
+
+  // 依「保留頁數 ÷ 總頁數」的比例估算輸出大小
+  function updateSplitEstimate() {
+    var el = $('splitEstimate');
+    el.textContent = '';
+    if (!splitFile) return;
+    var text = $('splitPages').value.trim();
+    if (!text) return;
+    var pages;
+    try { pages = parsePageRange(text, splitTotalPages); } catch (e) { return; }
+    var unique = pages.filter(function (p, i) { return pages.indexOf(p) === i; });
+    var est = splitFile.size * (unique.length / splitTotalPages);
+    el.textContent = '📦 保留 ' + unique.length + ' / ' + splitTotalPages +
+      ' 頁，預估輸出大小：約 ' + formatSize(est) + '（依頁數比例估計，實際大小依內容而定）';
+  }
+  $('splitPages').addEventListener('input', updateSplitEstimate);
+
+  setupDropZone($('splitDrop'), $('splitInput'), async function (files) {
+    var status = $('splitStatus');
+    hideStatus(status);
+    $('splitInfo').style.display = 'none';
+    splitFile = null;
+    splitSelector.clear();
+    $('splitEstimate').textContent = '';
+
+    var f = files[0];
+    if (!(await isPdfFile(f))) {
+      showStatus(status, 'error', '「' + f.name + '」不是 PDF 檔案，請重新選擇。');
+      return;
+    }
+    if (!pdfjsLib) {
+      showStatus(status, 'error', 'PDF 顯示元件載入失敗，請檢查網路後重新整理頁面。');
+      return;
+    }
+    showStatus(status, 'info', '正在讀取 PDF 並產生頁面預覽…');
+    try {
+      $('splitPages').value = '';
+      splitTotalPages = await splitSelector.load(f);
+      splitFile = f;
+      $('splitBadge').textContent = '📄 ' + f.name + ' · 共 ' + splitTotalPages + ' 頁';
+      $('splitInfo').style.display = 'block';
+      hideStatus(status);
+    } catch (e) {
+      showStatus(status, 'error', '無法讀取這個 PDF，檔案可能已損毀或有密碼保護。');
+    }
+  });
+
+  $('splitBtn').addEventListener('click', async function () {
+    var status = $('splitStatus');
+    hideStatus(status);
+    if (!splitFile) {
+      showStatus(status, 'error', '請先選擇一個 PDF 檔案。');
+      return;
+    }
+    var text = $('splitPages').value.trim();
+    if (!text) {
+      showStatus(status, 'error', '請輸入要保留的頁碼，例如：1,3,5-8');
+      return;
+    }
+    var pages;
+    try {
+      pages = parsePageRange(text, splitTotalPages);
+    } catch (e) {
+      showStatus(status, 'error', e.message);
+      return;
+    }
+    var btn = $('splitBtn');
+    btn.disabled = true;
+    showStatus(status, 'info', '處理中，請稍候…');
+    await nextFrame();
+    try {
+      var buf = await splitFile.arrayBuffer();
+      var src = await PDFLib.PDFDocument.load(buf, { ignoreEncryption: true });
+      var out = await PDFLib.PDFDocument.create();
+      var indices = pages.map(function (p) { return p - 1; });
+      var copied = await out.copyPages(src, indices);
+      copied.forEach(function (p) { out.addPage(p); });
+      var bytes = await out.save();
+      var base = splitFile.name.replace(/\.pdf$/i, '');
+      var outBlob = new Blob([bytes], { type: 'application/pdf' });
+      downloadBlob(outBlob, base + '_選取頁面.pdf');
+      showStatus(status, 'success', '✅ 已匯出 ' + pages.length + ' 頁的新 PDF（' +
+        formatSize(outBlob.size) + '），已開始下載。');
+    } catch (err) {
+      showStatus(status, 'error', '匯出失敗：' + err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  /* ================= 功能 C：PDF 轉圖片 ================= */
+
+  var toimgFile = null;
+  var toimgTotalPages = 0;
+  var toimgOutputs = []; // { blob, filename }
+  var toimgSelector = makePageSelector('toimgThumbs', 'toimgMore', 'toimgPages');
+
+  // 依「頁面像素數 × 格式係數」粗估圖片輸出大小
+  function updateToimgEstimate() {
+    var el = $('toimgEstimate');
+    el.textContent = '';
+    if (!toimgFile) return;
+    var text = $('toimgPages').value.trim();
+    var count;
+    try {
+      if (text) {
+        var pages = parsePageRange(text, toimgTotalPages);
+        count = pages.filter(function (p, i) { return pages.indexOf(p) === i; }).length;
+      } else {
+        count = toimgTotalPages;
+      }
+    } catch (e) { return; }
+    var dims = toimgSelector.getPageSize();
+    if (!dims) return;
+    var scale = parseFloat($('toimgQuality').value);
+    var format = $('toimgFormat').value;
+    var pixels = (dims.width * scale) * (dims.height * scale);
+    var bytesPerPixel = format === 'png' ? 0.8 : 0.25; // 經驗值：PNG 較大、JPG 較小
+    var est = pixels * bytesPerPixel * count;
+    el.textContent = '📦 將轉換 ' + count + ' 頁，預估輸出總大小：約 ' + formatSize(est) +
+      '（' + format.toUpperCase() + '，依頁面內容複雜度會有明顯差異）';
+  }
+  $('toimgPages').addEventListener('input', updateToimgEstimate);
+  $('toimgFormat').addEventListener('change', updateToimgEstimate);
+  $('toimgQuality').addEventListener('change', updateToimgEstimate);
+
+  setupDropZone($('toimgDrop'), $('toimgInput'), async function (files) {
+    var status = $('toimgStatus');
+    hideStatus(status);
+    $('toimgInfo').style.display = 'none';
+    $('toimgResults').innerHTML = '';
+    $('toimgZipBtn').style.display = 'none';
+    toimgFile = null;
+    toimgOutputs = [];
+    toimgSelector.clear();
+    $('toimgEstimate').textContent = '';
+
+    var f = files[0];
+    if (!(await isPdfFile(f))) {
+      showStatus(status, 'error', '「' + f.name + '」不是 PDF 檔案，請重新選擇。');
+      return;
+    }
+    if (!pdfjsLib) {
+      showStatus(status, 'error', 'PDF 顯示元件載入失敗，請檢查網路後重新整理頁面。');
+      return;
+    }
+    showStatus(status, 'info', '正在讀取 PDF 並產生頁面預覽…');
+    try {
+      $('toimgPages').value = '';
+      toimgTotalPages = await toimgSelector.load(f);
+      toimgFile = f;
+      $('toimgBadge').textContent = '📄 ' + f.name + ' · 共 ' + toimgTotalPages + ' 頁';
+      $('toimgInfo').style.display = 'block';
+      updateToimgEstimate(); // 預設轉全部頁面，先顯示預估
+      hideStatus(status);
+    } catch (e) {
+      showStatus(status, 'error', '無法讀取這個 PDF，檔案可能已損毀或有密碼保護。');
+    }
+  });
+
+  $('toimgBtn').addEventListener('click', async function () {
+    var status = $('toimgStatus');
+    var progress = $('toimgProgress');
+    hideStatus(status);
+    if (!toimgFile) {
+      showStatus(status, 'error', '請先選擇一個 PDF 檔案。');
+      return;
+    }
+
+    var text = $('toimgPages').value.trim();
+    var pages;
+    try {
+      if (text) {
+        pages = parsePageRange(text, toimgTotalPages);
+        // 去除重複並排序
+        pages = pages.filter(function (p, i) { return pages.indexOf(p) === i; })
+                     .sort(function (a, b) { return a - b; });
+      } else {
+        pages = [];
+        for (var p = 1; p <= toimgTotalPages; p++) pages.push(p);
+      }
+    } catch (e) {
+      showStatus(status, 'error', e.message);
+      return;
+    }
+
+    // 手機效能保護：一次太多頁時先確認
+    var softLimit = IS_MOBILE ? 15 : 50;
+    if (pages.length > softLimit) {
+      var ok = confirm('您選了 ' + pages.length + ' 頁，一次轉換太多頁可能讓裝置變慢或當機。\n建議分批轉換。仍要繼續嗎？');
+      if (!ok) return;
+    }
+
+    var format = $('toimgFormat').value; // png / jpg
+    var scale = parseFloat($('toimgQuality').value);
+    // 手機降低最大渲染尺寸，避免記憶體不足
+    var maxDim = IS_MOBILE ? 2000 : 4000;
+
+    var btn = $('toimgBtn');
+    btn.disabled = true;
+    $('toimgResults').innerHTML = '';
+    $('toimgZipBtn').style.display = 'none';
+    toimgOutputs = [];
+
+    var doc = null;
+    try {
+      var buf = await toimgFile.arrayBuffer();
+      doc = await pdfjsLib.getDocument({ data: buf }).promise;
+      var base = toimgFile.name.replace(/\.pdf$/i, '');
+      var canvas = document.createElement('canvas');
+      var ctx = canvas.getContext('2d');
+
+      for (var i = 0; i < pages.length; i++) {
+        var pageNum = pages[i];
+        setProgress(progress, i, pages.length, '正在轉換第 ' + pageNum + ' 頁');
+        await nextFrame();
+
+        var page = await doc.getPage(pageNum);
+        var viewport = page.getViewport({ scale: scale });
+        // 尺寸上限保護
+        var factor = Math.min(1, maxDim / Math.max(viewport.width, viewport.height));
+        if (factor < 1) viewport = page.getViewport({ scale: scale * factor });
+
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        if (format === 'jpg') {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        } else {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+        page.cleanup();
+
+        var blob = await new Promise(function (resolve) {
+          if (format === 'jpg') canvas.toBlob(resolve, 'image/jpeg', 0.92);
+          else canvas.toBlob(resolve, 'image/png');
+        });
+        if (!blob) throw new Error('第 ' + pageNum + ' 頁輸出失敗，可能是記憶體不足，請降低解析度或減少頁數。');
+
+        var filename = base + '_第' + pageNum + '頁.' + format;
+        toimgOutputs.push({ blob: blob, filename: filename });
+        addImgResult(blob, filename, '第 ' + pageNum + ' 頁');
+      }
+
+      canvas.width = canvas.height = 0; // 釋放記憶體
+      setProgress(progress, pages.length, pages.length, '轉換完成');
+      var totalSize = toimgOutputs.reduce(function (s, o) { return s + o.blob.size; }, 0);
+      showStatus(status, 'success', '✅ 完成！共轉換 ' + toimgOutputs.length + ' 頁（總計 ' +
+        formatSize(totalSize) + '），可逐張下載或打包下載。');
+      if (toimgOutputs.length > 1) $('toimgZipBtn').style.display = 'block';
+    } catch (err) {
+      showStatus(status, 'error', '轉換失敗：' + err.message);
+    } finally {
+      if (doc) doc.destroy();
+      hideProgress(progress);
+      btn.disabled = false;
+    }
+  });
+
+  function addImgResult(blob, filename, caption) {
+    var url = URL.createObjectURL(blob);
+    var div = document.createElement('div');
+    div.className = 'img-result';
+
+    var img = document.createElement('img');
+    img.src = url;
+    img.alt = caption;
+    img.loading = 'lazy';
+    div.appendChild(img);
+
+    var cap = document.createElement('div');
+    cap.className = 'cap';
+    cap.textContent = caption + ' · ' + formatSize(blob.size);
+    div.appendChild(cap);
+
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.textContent = '⬇ 下載';
+    div.appendChild(a);
+
+    $('toimgResults').appendChild(div);
+  }
+
+  $('toimgZipBtn').addEventListener('click', async function () {
+    var status = $('toimgStatus');
+    var btn = $('toimgZipBtn');
+    if (toimgOutputs.length === 0) return;
+    btn.disabled = true;
+    showStatus(status, 'info', '正在打包 ZIP…');
+    try {
+      var zip = new JSZip();
+      toimgOutputs.forEach(function (o) { zip.file(o.filename, o.blob); });
+      var zipBlob = await zip.generateAsync({ type: 'blob' });
+      var base = toimgFile ? toimgFile.name.replace(/\.pdf$/i, '') : 'PDF圖片';
+      downloadBlob(zipBlob, base + '_圖片.zip');
+      showStatus(status, 'success', '✅ ZIP 已開始下載（' + formatSize(zipBlob.size) + '）。');
+    } catch (err) {
+      showStatus(status, 'error', '打包失敗：' + err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  /* ================= 功能 D：圖片轉 PDF ================= */
+
+  var topdfImages = []; // { name, blob (jpg/png), previewUrl, kind: 'jpg'|'png' }
+
+  setupDropZone($('topdfDrop'), $('topdfInput'), async function (files) {
+    var status = $('topdfStatus');
+    hideStatus(status);
+
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      var lower = f.name.toLowerCase();
+      var isJpg = /\.(jpe?g)$/.test(lower) || f.type === 'image/jpeg';
+      var isPng = /\.png$/.test(lower) || f.type === 'image/png';
+      var isHeic = /\.(heic|heif)$/.test(lower) || /image\/hei[cf]/.test(f.type);
+
+      if (isHeic) {
+        if (typeof heic2any !== 'function') {
+          showStatus(status, 'error', 'HEIC 轉換元件載入失敗，「' + f.name + '」已略過。請檢查網路後重新整理。');
+          continue;
+        }
+        showStatus(status, 'info', '正在轉換 HEIC 圖片：' + f.name + '…');
+        try {
+          var converted = await heic2any({ blob: f, toType: 'image/jpeg', quality: 0.9 });
+          if (Array.isArray(converted)) converted = converted[0];
+          topdfImages.push({
+            name: f.name.replace(/\.(heic|heif)$/i, '.jpg'),
+            blob: converted,
+            previewUrl: URL.createObjectURL(converted),
+            kind: 'jpg'
+          });
+          hideStatus(status);
+        } catch (e) {
+          showStatus(status, 'error', '「' + f.name + '」HEIC 轉換失敗，已略過。');
+        }
+      } else if (isJpg || isPng) {
+        topdfImages.push({
+          name: f.name,
+          blob: f,
+          previewUrl: URL.createObjectURL(f),
+          kind: isJpg ? 'jpg' : 'png'
+        });
+      } else {
+        showStatus(status, 'error', '「' + f.name + '」不是支援的圖片格式（JPG/PNG/HEIC），已略過。');
+      }
+    }
+    renderTopdfList();
+  });
+
+  function updateTopdfEstimate() {
+    var el = $('topdfEstimate');
+    if (!topdfImages.length) { el.textContent = ''; return; }
+    var total = topdfImages.reduce(function (s, i) { return s + i.blob.size; }, 0);
+    el.textContent = '📦 共 ' + topdfImages.length + ' 張圖片，預估 PDF 大小：約 ' +
+      formatSize(total) + '（圖片會以原始品質嵌入）';
+  }
+
+  function renderTopdfList() {
+    var ul = $('topdfList');
+    ul.innerHTML = '';
+    updateTopdfEstimate();
+    topdfImages.forEach(function (item, idx) {
+      var li = document.createElement('li');
+
+      var img = document.createElement('img');
+      img.className = 'thumb';
+      img.src = item.previewUrl;
+      img.alt = item.name;
+      img.title = '點一下放大檢視';
+      img.addEventListener('click', function () {
+        Viewer.open({
+          index: idx,
+          min: 0,
+          max: topdfImages.length - 1,
+          caption: function (i) {
+            return topdfImages[i]
+              ? topdfImages[i].name + '（' + (i + 1) + ' / ' + topdfImages.length + '）'
+              : '';
+          },
+          getImage: function (i) { return Promise.resolve(topdfImages[i].previewUrl); }
+        });
+      });
+      li.appendChild(img);
+
+      var name = document.createElement('span');
+      name.className = 'fname';
+      name.textContent = (idx + 1) + '. ' + item.name;
+      li.appendChild(name);
+
+      li.appendChild(makeMiniBtn('▲', idx === 0, function () {
+        var t = topdfImages[idx - 1]; topdfImages[idx - 1] = topdfImages[idx]; topdfImages[idx] = t;
+        renderTopdfList();
+      }));
+      li.appendChild(makeMiniBtn('▼', idx === topdfImages.length - 1, function () {
+        var t = topdfImages[idx + 1]; topdfImages[idx + 1] = topdfImages[idx]; topdfImages[idx] = t;
+        renderTopdfList();
+      }));
+      li.appendChild(makeMiniBtn('✕', false, function () {
+        URL.revokeObjectURL(topdfImages[idx].previewUrl);
+        topdfImages.splice(idx, 1);
+        renderTopdfList();
+      }, true));
+
+      ul.appendChild(li);
+    });
+    $('topdfOptions').style.display = topdfImages.length ? 'flex' : 'none';
+  }
+
+  // 選「原始圖片尺寸」時，紙張方向選項沒有作用，隱藏起來
+  $('topdfSize').addEventListener('change', function () {
+    $('topdfOrientWrap').style.display = this.value === 'original' ? 'none' : '';
+  });
+
+  $('topdfBtn').addEventListener('click', async function () {
+    var status = $('topdfStatus');
+    var progress = $('topdfProgress');
+    hideStatus(status);
+    if (topdfImages.length === 0) {
+      showStatus(status, 'error', '請先選擇圖片。');
+      return;
+    }
+    var btn = $('topdfBtn');
+    btn.disabled = true;
+
+    // A4 尺寸（pt）
+    var A4W = 595.28, A4H = 841.89;
+    var MARGIN = 24;
+    var MAX_PAGE_PT = 14400; // PDF 規格的頁面尺寸上限
+    var sizeMode = $('topdfSize').value; // a4 / original
+    var orient = $('topdfOrient').value;
+
+    try {
+      var doc = await PDFLib.PDFDocument.create();
+
+      for (var i = 0; i < topdfImages.length; i++) {
+        var item = topdfImages[i];
+        setProgress(progress, i, topdfImages.length, '正在加入 ' + item.name);
+        await nextFrame();
+
+        var buf = await item.blob.arrayBuffer();
+        var bytes = new Uint8Array(buf);
+        var image;
+        try {
+          // 依檔頭判斷實際格式（比副檔名可靠）
+          if (bytes[0] === 0x89 && bytes[1] === 0x50) {
+            image = await doc.embedPng(buf);
+          } else if (bytes[0] === 0xFF && bytes[1] === 0xD8) {
+            image = await doc.embedJpg(buf);
+          } else {
+            image = item.kind === 'png' ? await doc.embedPng(buf) : await doc.embedJpg(buf);
+          }
+        } catch (e) {
+          throw new Error('無法讀取圖片「' + item.name + '」，檔案可能已損毀。');
+        }
+
+        if (sizeMode === 'original') {
+          // 頁面大小 = 圖片大小（1 像素 = 1 pt），超過 PDF 上限時等比縮小
+          var fit = Math.min(1, MAX_PAGE_PT / Math.max(image.width, image.height));
+          var ow = image.width * fit;
+          var oh = image.height * fit;
+          var page = doc.addPage([ow, oh]);
+          page.drawImage(image, { x: 0, y: 0, width: ow, height: oh });
+        } else {
+          var pw = A4W, ph = A4H;
+          if (orient === 'landscape' || (orient === 'auto' && image.width > image.height)) {
+            pw = A4H; ph = A4W;
+          }
+          var page = doc.addPage([pw, ph]);
+
+          // 等比例縮放並置中
+          var availW = pw - MARGIN * 2;
+          var availH = ph - MARGIN * 2;
+          var ratio = Math.min(availW / image.width, availH / image.height);
+          var w = image.width * ratio;
+          var h = image.height * ratio;
+          page.drawImage(image, {
+            x: (pw - w) / 2,
+            y: (ph - h) / 2,
+            width: w,
+            height: h
+          });
+        }
+      }
+
+      setProgress(progress, topdfImages.length, topdfImages.length, '正在輸出檔案');
+      var pdfBytes = await doc.save();
+      var outBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+      downloadBlob(outBlob, '圖片轉PDF.pdf');
+      showStatus(status, 'success', '✅ 完成！已產生 ' + topdfImages.length + ' 頁的 PDF（' +
+        (sizeMode === 'original' ? '原始圖片尺寸' : 'A4 尺寸') + '，' +
+        formatSize(outBlob.size) + '），已開始下載。');
+    } catch (err) {
+      showStatus(status, 'error', '產生失敗：' + err.message);
+    } finally {
+      hideProgress(progress);
+      btn.disabled = false;
+    }
+  });
+
+  /* ================= 功能 E：PDF 壓縮 ================= */
+
+  var compressFile = null;
+  var compressTotalPages = 0;
+  var compressPageDims = null; // 第 1 頁尺寸（pt），估算用
+  var compressResult = null;   // { blob, filename }
+
+  // 轉圖壓縮參數。dpi：重新渲染的解析度；quality：JPEG 品質；bpp：估算用的每像素位元組經驗值
+  var COMPRESS_LEVELS = {
+    light:  { dpi: 144, quality: 0.75, bpp: 0.20 },
+    medium: { dpi: 110, quality: 0.55, bpp: 0.13 },
+    strong: { dpi: 75,  quality: 0.35, bpp: 0.08 }
+  };
+  // 深度壓縮（Ghostscript）的強度對應：printer=300 DPI、ebook=150 DPI、screen=72 DPI
+  var GS_PRESETS = { light: '/printer', medium: '/ebook', strong: '/screen' };
+  var GS_CDN = 'https://cdn.jsdelivr.net/npm/@jspawn/ghostscript-wasm@0.0.2/';
+  var gsFactory = null; // 引擎模組只下載一次
+
+  function updateCompressHint() {
+    var deep = $('compressMode').value === 'deep';
+    $('compressHint').textContent = deep
+      ? '✅ 深度壓縮使用 Ghostscript 引擎：文字保持可選取、可搜尋，圖片會智慧降低解析度。第一次使用需下載約 16 MB 的引擎，之後瀏覽器會快取。'
+      : '⚠️ 轉圖壓縮會把每一頁變成圖片，文字將無法選取、複製或搜尋。適合當深度壓縮處理不了某個檔案時的備用方案。';
+  }
+  updateCompressHint();
+
+  function updateCompressEstimate() {
+    var el = $('compressEstimate');
+    el.textContent = '';
+    if (!compressFile || !compressPageDims) return;
+    if ($('compressMode').value === 'deep') {
+      el.textContent = '📦 原始大小：' + formatSize(compressFile.size) +
+        '。深度壓縮的效果依內容而定：掃描檔／照片型常可縮到原本的 2～4 成，文字型 PDF 空間較小。壓完會顯示實際大小再讓你決定要不要下載。';
+      return;
+    }
+    var lv = COMPRESS_LEVELS[$('compressLevel').value];
+    var scale = lv.dpi / 72;
+    var pixels = (compressPageDims.width * scale) * (compressPageDims.height * scale);
+    var est = pixels * lv.bpp * compressTotalPages;
+    el.textContent = '📦 原始大小：' + formatSize(compressFile.size) +
+      '，預估壓縮後：約 ' + formatSize(est) +
+      '（依頁面內容複雜度會有明顯差異，實際大小以結果為準）';
+  }
+  $('compressLevel').addEventListener('change', updateCompressEstimate);
+  $('compressMode').addEventListener('change', function () {
+    updateCompressHint();
+    updateCompressEstimate();
+  });
+
+  // 下載並快取 Ghostscript 引擎模組
+  async function loadGsFactory(status) {
+    if (gsFactory) return gsFactory;
+    showStatus(status, 'info', '正在下載壓縮引擎（約 16 MB，只需下載一次）…');
+    await nextFrame();
+    try {
+      var mod = await import(GS_CDN + 'gs.mjs');
+      gsFactory = mod.default;
+    } catch (e) {
+      throw new Error('壓縮引擎下載失敗，請檢查網路連線後再試，或改用「轉圖壓縮」模式。');
+    }
+    return gsFactory;
+  }
+
+  // 用 Ghostscript 執行深度壓縮，回傳壓縮後的 Blob
+  async function runDeepCompress(file, preset, status, progress) {
+    var factory = await loadGsFactory(status);
+    showStatus(status, 'info', '正在初始化引擎…');
+    setProgress(progress, 1, 3, '初始化引擎');
+    await nextFrame();
+
+    // 每次建立新的引擎實例，確保虛擬檔案系統是乾淨的
+    var gs = await factory({
+      locateFile: function (f) { return GS_CDN + f; },
+      print: function () {},
+      printErr: function () {}
+    });
+    var data = new Uint8Array(await file.arrayBuffer());
+    gs.FS.writeFile('in.pdf', data);
+
+    showStatus(status, 'info', '壓縮運算中…檔案較大時視窗可能短暫沒有回應，請耐心等候。');
+    setProgress(progress, 2, 3, '引擎運算中');
+    await nextFrame();
+
+    try {
+      var ret = gs.callMain([
+        '-sDEVICE=pdfwrite',
+        '-dCompatibilityLevel=1.4',
+        '-dPDFSETTINGS=' + preset,
+        '-dNOPAUSE', '-dQUIET', '-dBATCH',
+        '-sOutputFile=out.pdf',
+        'in.pdf'
+      ]);
+      if (ret && typeof ret.then === 'function') await ret;
+    } catch (e) {
+      // Emscripten 在程式正常結束時也可能丟出 ExitStatus，以輸出檔是否存在為準
+    }
+
+    var out = null;
+    try { out = gs.FS.readFile('out.pdf'); } catch (e) {}
+    if (!out || out.length === 0) {
+      throw new Error('引擎無法處理這個檔案（可能有密碼保護或結構損毀）。可以改用「轉圖壓縮」模式再試一次。');
+    }
+    return new Blob([out], { type: 'application/pdf' });
+  }
+
+  setupDropZone($('compressDrop'), $('compressInput'), async function (files) {
+    var status = $('compressStatus');
+    hideStatus(status);
+    $('compressInfo').style.display = 'none';
+    $('compressEstimate').textContent = '';
+    $('compressDownloadBtn').style.display = 'none';
+    compressFile = null;
+    compressResult = null;
+
+    var f = files[0];
+    if (!(await isPdfFile(f))) {
+      showStatus(status, 'error', '「' + f.name + '」不是 PDF 檔案，請重新選擇。');
+      return;
+    }
+    if (!pdfjsLib) {
+      showStatus(status, 'error', 'PDF 顯示元件載入失敗，請檢查網路後重新整理頁面。');
+      return;
+    }
+    showStatus(status, 'info', '正在讀取 PDF…');
+    var doc = null;
+    try {
+      var buf = await f.arrayBuffer();
+      doc = await pdfjsLib.getDocument({ data: buf }).promise;
+      compressTotalPages = doc.numPages;
+      var p1 = await doc.getPage(1);
+      var v1 = p1.getViewport({ scale: 1 });
+      compressPageDims = { width: v1.width, height: v1.height };
+      p1.cleanup();
+      compressFile = f;
+      $('compressBadge').textContent = '📄 ' + f.name + ' · 共 ' + compressTotalPages +
+        ' 頁 · ' + formatSize(f.size);
+      $('compressInfo').style.display = 'block';
+      updateCompressEstimate();
+      hideStatus(status);
+    } catch (e) {
+      showStatus(status, 'error', '無法讀取這個 PDF，檔案可能已損毀或有密碼保護。');
+    } finally {
+      if (doc) doc.destroy();
+    }
+  });
+
+  $('compressBtn').addEventListener('click', async function () {
+    var status = $('compressStatus');
+    var progress = $('compressProgress');
+    hideStatus(status);
+    $('compressDownloadBtn').style.display = 'none';
+    compressResult = null;
+
+    if (!compressFile) {
+      showStatus(status, 'error', '請先選擇一個 PDF 檔案。');
+      return;
+    }
+    var mode = $('compressMode').value;
+    var levelKey = $('compressLevel').value;
+
+    // 轉圖模式逐頁處理較耗時，頁數太多時先確認
+    if (mode === 'raster') {
+      var softLimit = IS_MOBILE ? 40 : 150;
+      if (compressTotalPages > softLimit) {
+        var ok = confirm('這個 PDF 有 ' + compressTotalPages + ' 頁，壓縮需要逐頁處理，' +
+          '可能需要較長時間，過程中請不要關閉頁面。要繼續嗎？');
+        if (!ok) return;
+      }
+    }
+
+    var btn = $('compressBtn');
+    btn.disabled = true;
+
+    try {
+      var outBlob;
+      if (mode === 'deep') {
+        outBlob = await runDeepCompress(compressFile, GS_PRESETS[levelKey], status, progress);
+      } else {
+        outBlob = await runRasterCompress(levelKey, progress);
+      }
+
+      var baseName = compressFile.name.replace(/\.pdf$/i, '');
+      compressResult = { blob: outBlob, filename: baseName + '_壓縮.pdf' };
+
+      var saved = compressFile.size - outBlob.size;
+      var dlBtn = $('compressDownloadBtn');
+      dlBtn.textContent = '⬇ 下載壓縮後的 PDF（' + formatSize(outBlob.size) + '）';
+      dlBtn.style.display = 'block';
+
+      if (saved > 0) {
+        var pct = Math.round((saved / compressFile.size) * 100);
+        showStatus(status, 'success', '✅ 壓縮完成！' + formatSize(compressFile.size) + ' → ' +
+          formatSize(outBlob.size) + '，縮小了 ' + pct + '%。' +
+          '不滿意的話可以換一個壓縮強度或壓縮方式再試一次。');
+      } else {
+        showStatus(status, 'info', '壓縮完成，但檔案沒有變小（' + formatSize(compressFile.size) +
+          ' → ' + formatSize(outBlob.size) + '）。原檔可能已經最佳化過，建議直接使用原檔' +
+          (mode === 'deep' ? '，或改試「轉圖壓縮」模式。' : '。'));
+      }
+    } catch (err) {
+      showStatus(status, 'error', '壓縮失敗：' + err.message);
+    } finally {
+      hideProgress(progress);
+      btn.disabled = false;
+    }
+  });
+
+  // 轉圖壓縮：逐頁渲染成 JPEG 再組回 PDF，回傳壓縮後的 Blob
+  async function runRasterCompress(levelKey, progress) {
+    var lv = COMPRESS_LEVELS[levelKey];
+    var maxDim = IS_MOBILE ? 1800 : 2400;
+    var doc = null;
+    try {
+      var buf = await compressFile.arrayBuffer();
+      doc = await pdfjsLib.getDocument({ data: buf }).promise;
+      var out = await PDFLib.PDFDocument.create();
+      var canvas = document.createElement('canvas');
+      var ctx = canvas.getContext('2d');
+
+      for (var p = 1; p <= compressTotalPages; p++) {
+        setProgress(progress, p - 1, compressTotalPages, '正在壓縮第 ' + p + ' 頁');
+        await nextFrame();
+
+        var page = await doc.getPage(p);
+        var base = page.getViewport({ scale: 1 });
+        var scale = lv.dpi / 72;
+        var factor = Math.min(1, maxDim / Math.max(base.width * scale, base.height * scale));
+        var vp = page.getViewport({ scale: scale * factor });
+
+        canvas.width = Math.floor(vp.width);
+        canvas.height = Math.floor(vp.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        page.cleanup();
+
+        var blob = await new Promise(function (resolve) {
+          canvas.toBlob(resolve, 'image/jpeg', lv.quality);
+        });
+        if (!blob) throw new Error('第 ' + p + ' 頁處理失敗，可能是記憶體不足，請改用較強的壓縮強度。');
+
+        var img = await out.embedJpg(await blob.arrayBuffer());
+        // 頁面維持原始尺寸（pt），圖片鋪滿整頁
+        var newPage = out.addPage([base.width, base.height]);
+        newPage.drawImage(img, { x: 0, y: 0, width: base.width, height: base.height });
+      }
+
+      canvas.width = canvas.height = 0;
+      setProgress(progress, compressTotalPages, compressTotalPages, '正在輸出檔案');
+      var bytes = await out.save();
+      return new Blob([bytes], { type: 'application/pdf' });
+    } finally {
+      if (doc) doc.destroy();
+    }
+  }
+
+  $('compressDownloadBtn').addEventListener('click', function () {
+    if (compressResult) downloadBlob(compressResult.blob, compressResult.filename);
+  });
+
+  /* ================= 套件載入檢查 ================= */
+
+  window.addEventListener('load', function () {
+    if (!window.PDFLib) {
+      document.querySelectorAll('.status').forEach(function (el) {
+        showStatus(el, 'error', '⚠️ 套件載入失敗，請確認網路連線後重新整理頁面。');
+      });
+    }
+  });
+})();
+</script>
+</body>
+</html>
