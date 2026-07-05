@@ -473,17 +473,31 @@
             <select id="toimgFormat">
               <option value="png">PNG（畫質佳）</option>
               <option value="jpg">JPG（檔案小）</option>
+              <option value="webp">WebP（檔案最小）</option>
             </select>
           </div>
           <div>
-            <label class="field-label" for="toimgQuality">解析度</label>
-            <select id="toimgQuality">
-              <option value="1.5">一般</option>
-              <option value="2" selected>清晰</option>
-              <option value="3">高解析</option>
+            <label class="field-label" for="toimgDpi">解析度</label>
+            <select id="toimgDpi">
+              <option value="96">96 DPI（螢幕檢視）</option>
+              <option value="150" selected>150 DPI（一般用途）</option>
+              <option value="300">300 DPI（列印品質）</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label" for="toimgEngine">渲染引擎</label>
+            <select id="toimgEngine">
+              <option value="auto" selected>自動（建議）</option>
+              <option value="pdfjs">標準（快速）</option>
+              <option value="gs">高保真（Ghostscript）</option>
             </select>
           </div>
         </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:10px;cursor:pointer">
+          <input type="checkbox" id="toimgWhiteBg" style="display:inline;width:16px;height:16px">
+          白色背景（PNG／WebP 預設為透明背景，勾選後填滿白色）
+        </label>
+        <p class="hint">自動模式會先用快速引擎，遇到渲染失敗的頁面自動改用 Ghostscript 高保真引擎重跑；高保真模式第一次使用需下載約 16 MB 引擎。</p>
       </div>
       <div class="estimate" id="toimgEstimate"></div>
       <button class="btn" id="toimgBtn">開始轉換</button>
@@ -1348,17 +1362,20 @@
     } catch (e) { return; }
     var dims = toimgSelector.getPageSize();
     if (!dims) return;
-    var scale = parseFloat($('toimgQuality').value);
+    var dpi = parseInt($('toimgDpi').value, 10);
     var format = $('toimgFormat').value;
-    var pixels = (dims.width * scale) * (dims.height * scale);
-    var bytesPerPixel = format === 'png' ? 0.8 : 0.25; // 經驗值：PNG 較大、JPG 較小
-    var est = pixels * bytesPerPixel * count;
-    el.textContent = '📦 將轉換 ' + count + ' 頁，預估輸出總大小：約 ' + formatSize(est) +
+    var pw = Math.round(dims.width / 72 * dpi);
+    var ph = Math.round(dims.height / 72 * dpi);
+    // 經驗值：PNG 較大、JPG 較小、WebP 最小
+    var bytesPerPixel = { png: 0.8, jpg: 0.25, webp: 0.15 }[format];
+    var est = pw * ph * bytesPerPixel * count;
+    el.textContent = '📦 將轉換 ' + count + ' 頁，每頁約 ' + pw + '×' + ph +
+      ' 像素，預估輸出總大小：約 ' + formatSize(est) +
       '（' + format.toUpperCase() + '，依頁面內容複雜度會有明顯差異）';
   }
   $('toimgPages').addEventListener('input', updateToimgEstimate);
   $('toimgFormat').addEventListener('change', updateToimgEstimate);
-  $('toimgQuality').addEventListener('change', updateToimgEstimate);
+  $('toimgDpi').addEventListener('change', updateToimgEstimate);
 
   setupDropZone($('toimgDrop'), $('toimgInput'), async function (files) {
     var status = $('toimgStatus');
@@ -1427,10 +1444,23 @@
       if (!ok) return;
     }
 
-    var format = $('toimgFormat').value; // png / jpg
-    var scale = parseFloat($('toimgQuality').value);
-    // 手機降低最大渲染尺寸，避免記憶體不足
+    var format = $('toimgFormat').value; // png / jpg / webp
+    var dpi = parseInt($('toimgDpi').value, 10);
+    var engine = $('toimgEngine').value; // auto / pdfjs / gs
+    var whiteBg = $('toimgWhiteBg').checked;
+
+    if (format === 'webp' && !canvasSupportsWebp()) {
+      showStatus(status, 'error', '這個瀏覽器不支援輸出 WebP，請改選 PNG 或 JPG。');
+      return;
+    }
+
+    // 尺寸上限保護：手機較低；DPI 換算後超標時自動下修
     var maxDim = IS_MOBILE ? 2000 : 4000;
+    var dims = toimgSelector.getPageSize();
+    if (dims) {
+      var capDpi = Math.floor(maxDim * 72 / Math.max(dims.width, dims.height));
+      if (dpi > capDpi) dpi = Math.max(24, capDpi);
+    }
 
     var btn = $('toimgBtn');
     btn.disabled = true;
@@ -1440,50 +1470,66 @@
 
     var doc = null;
     try {
-      var buf = await toimgFile.arrayBuffer();
-      doc = await pdfjsLib.getDocument({ data: buf }).promise;
-      var base = toimgFile.name.replace(/\.pdf$/i, '');
-      var canvas = document.createElement('canvas');
-      var ctx = canvas.getContext('2d');
+      var results = new Array(pages.length); // 依頁面順序存放輸出的 Blob
+      var gsQueue = []; // 需要用 Ghostscript 渲染的項目 { i, pageNum }
 
-      for (var i = 0; i < pages.length; i++) {
-        var pageNum = pages[i];
-        setProgress(progress, i, pages.length, '正在轉換第 ' + pageNum + ' 頁');
-        await nextFrame();
-
-        var page = await doc.getPage(pageNum);
-        var viewport = page.getViewport({ scale: scale });
-        // 尺寸上限保護
-        var factor = Math.min(1, maxDim / Math.max(viewport.width, viewport.height));
-        if (factor < 1) viewport = page.getViewport({ scale: scale * factor });
-
-        canvas.width = Math.floor(viewport.width);
-        canvas.height = Math.floor(viewport.height);
-        if (format === 'jpg') {
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-        } else {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-        page.cleanup();
-
-        var blob = await new Promise(function (resolve) {
-          if (format === 'jpg') canvas.toBlob(resolve, 'image/jpeg', 0.92);
-          else canvas.toBlob(resolve, 'image/png');
-        });
-        if (!blob) throw new Error('第 ' + pageNum + ' 頁輸出失敗，可能是記憶體不足，請降低解析度或減少頁數。');
-
-        var filename = base + '_第' + pageNum + '頁.' + format;
-        toimgOutputs.push({ blob: blob, filename: filename });
-        addImgResult(blob, filename, '第 ' + pageNum + ' 頁');
+      if (engine === 'gs') {
+        for (var i = 0; i < pages.length; i++) gsQueue.push({ i: i, pageNum: pages[i] });
+      } else {
+        var buf = await toimgFile.arrayBuffer();
+        doc = await pdfjsLib.getDocument({ data: buf }).promise;
+        // 桌機同時渲染多頁加速，手機維持逐頁
+        var concurrency = IS_MOBILE ? 1 : 3;
+        var nextIdx = 0;
+        var doneCount = 0;
+        var runWorker = async function () {
+          for (;;) {
+            var idx = nextIdx++;
+            if (idx >= pages.length) return;
+            try {
+              results[idx] = await renderPageToBlob(doc, pages[idx], dpi, format, whiteBg);
+            } catch (e) {
+              if (engine === 'auto') {
+                gsQueue.push({ i: idx, pageNum: pages[idx] }); // 交給高保真引擎重跑
+              } else {
+                throw new Error('第 ' + pages[idx] + ' 頁渲染失敗，可以改用「高保真」引擎再試一次。');
+              }
+            }
+            doneCount++;
+            setProgress(progress, doneCount, pages.length, '已完成 ' + doneCount + ' 頁');
+            await nextFrame();
+          }
+        };
+        var workers = [];
+        for (var w = 0; w < concurrency; w++) workers.push(runWorker());
+        await Promise.all(workers);
       }
 
-      canvas.width = canvas.height = 0; // 釋放記憶體
+      if (gsQueue.length > 0) {
+        gsQueue.sort(function (a, b) { return a.i - b.i; });
+        setProgress(progress, 0, 1, 'Ghostscript 高保真引擎渲染中（' + gsQueue.length + ' 頁）');
+        var gsBlobs = await gsRenderPages(
+          toimgFile,
+          gsQueue.map(function (x) { return x.pageNum; }),
+          dpi, format, whiteBg, status
+        );
+        for (var g = 0; g < gsQueue.length; g++) results[gsQueue[g].i] = gsBlobs[g];
+      }
+
+      var base = toimgFile.name.replace(/\.pdf$/i, '');
+      for (var r = 0; r < pages.length; r++) {
+        if (!results[r]) throw new Error('第 ' + pages[r] + ' 頁輸出失敗，請降低解析度或減少頁數。');
+        var filename = base + '_第' + pages[r] + '頁.' + format;
+        toimgOutputs.push({ blob: results[r], filename: filename });
+        addImgResult(results[r], filename, '第 ' + pages[r] + ' 頁');
+      }
+
       setProgress(progress, pages.length, pages.length, '轉換完成');
       var totalSize = toimgOutputs.reduce(function (s, o) { return s + o.blob.size; }, 0);
       showStatus(status, 'success', '✅ 完成！共轉換 ' + toimgOutputs.length + ' 頁（總計 ' +
-        formatSize(totalSize) + '），可逐張下載或打包下載。');
+        formatSize(totalSize) + '）' +
+        (engine === 'auto' && gsQueue.length ? '，其中 ' + gsQueue.length + ' 頁由高保真引擎處理' : '') +
+        '，可逐張下載或打包下載。');
       if (toimgOutputs.length > 1) $('toimgZipBtn').style.display = 'block';
     } catch (err) {
       showStatus(status, 'error', '轉換失敗：' + err.message);
@@ -1493,6 +1539,95 @@
       btn.disabled = false;
     }
   });
+
+  function canvasSupportsWebp() {
+    var c = document.createElement('canvas');
+    c.width = c.height = 1;
+    return c.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+  }
+
+  function toBlobPromise(canvas, mime, quality) {
+    return new Promise(function (resolve) { canvas.toBlob(resolve, mime, quality); });
+  }
+
+  // 用 pdf.js 把單頁渲染成指定格式的 Blob
+  async function renderPageToBlob(doc, pageNum, dpi, format, whiteBg) {
+    var page = await doc.getPage(pageNum);
+    var vp = page.getViewport({ scale: dpi / 72 });
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.floor(vp.width);
+    canvas.height = Math.floor(vp.height);
+    var ctx = canvas.getContext('2d');
+    if (format === 'jpg' || whiteBg) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    page.cleanup();
+    var mime = format === 'png' ? 'image/png' : format === 'jpg' ? 'image/jpeg' : 'image/webp';
+    var blob = await toBlobPromise(canvas, mime, format === 'png' ? undefined : 0.92);
+    canvas.width = canvas.height = 0;
+    if (!blob) throw new Error('輸出失敗，可能是記憶體不足');
+    return blob;
+  }
+
+  // 把圖片 Blob 重新編碼成另一種格式（Ghostscript 輸出 PNG 後轉 WebP 用）
+  async function reencodeBlob(blob, mime, quality, whiteBg) {
+    var bmp = await createImageBitmap(blob);
+    var canvas = document.createElement('canvas');
+    canvas.width = bmp.width;
+    canvas.height = bmp.height;
+    var ctx = canvas.getContext('2d');
+    if (whiteBg) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.drawImage(bmp, 0, 0);
+    bmp.close();
+    var out = await toBlobPromise(canvas, mime, quality);
+    canvas.width = canvas.height = 0;
+    if (!out) throw new Error('圖片格式轉換失敗');
+    return out;
+  }
+
+  // 用 Ghostscript 一次渲染多頁（pageNums 必須遞增），回傳與 pageNums 對應的 Blob 陣列
+  async function gsRenderPages(file, pageNums, dpi, format, whiteBg, status) {
+    var factory = await loadGsFactory(status);
+    showStatus(status, 'info', '高保真引擎渲染中…檔案較大時視窗可能短暫沒有回應。');
+    await nextFrame();
+
+    var gs = await factory({
+      locateFile: function (f) { return GS_CDN + f; },
+      print: function () {},
+      printErr: function () {}
+    });
+    gs.FS.writeFile('in.pdf', new Uint8Array(await file.arrayBuffer()));
+
+    // JPG 直接用 jpeg 裝置；PNG／WebP 先輸出 PNG（依背景需求選擇是否帶透明）
+    var device = format === 'jpg' ? 'jpeg' : (whiteBg ? 'png16m' : 'pngalpha');
+    var ext = device === 'jpeg' ? 'jpg' : 'png';
+    var args = ['-sDEVICE=' + device, '-r' + dpi, '-dNOPAUSE', '-dBATCH', '-dQUIET'];
+    if (device === 'jpeg') args.push('-dJPEGQ=92');
+    args.push('-sPageList=' + pageNums.join(','), '-sOutputFile=out%d.' + ext, 'in.pdf');
+
+    try {
+      var ret = gs.callMain(args);
+      if (ret && typeof ret.then === 'function') await ret;
+    } catch (e) { /* 以輸出檔是否存在為準 */ }
+
+    var blobs = [];
+    for (var i = 1; i <= pageNums.length; i++) {
+      var data = null;
+      try { data = gs.FS.readFile('out' + i + '.' + ext); } catch (e) {}
+      if (!data || data.length === 0) {
+        throw new Error('高保真引擎無法渲染第 ' + pageNums[i - 1] + ' 頁（檔案可能有密碼保護或損毀）。');
+      }
+      var blob = new Blob([data], { type: device === 'jpeg' ? 'image/jpeg' : 'image/png' });
+      if (format === 'webp') blob = await reencodeBlob(blob, 'image/webp', 0.92, whiteBg);
+      blobs.push(blob);
+    }
+    return blobs;
+  }
 
   function addImgResult(blob, filename, caption) {
     var url = URL.createObjectURL(blob);
