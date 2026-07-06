@@ -44,4 +44,4 @@
 | [heic2any](https://github.com/alexcorvi/heic2any) | HEIC 圖片轉換 | MIT |
 | [Ghostscript（WASM）](https://github.com/jsscheller/ghostscript-wasm) | 深度壓縮／高保真渲染 | **AGPL-3.0** |
 
-⚠️ **商業使用注意**：本專案與 Ghostscript 均為 AGPL-3.0。若要用於閉源或商業產品，Ghostscript 部分請向 [Artifex](https://artifex.com/licensing/) 確認商業授權；本專案程式碼的使用則須遵循 AGPL-3.0 條款（衍生作品同樣需以 AGPL-3.0 開源）。
+⚠️ **商業使用注意**：AGPL-3.0 不禁止商業使用，但要求遵守開源義務。若要將包含 Ghostscript 的版本用於閉源產品，或無法遵守 AGPL-3.0 開源義務的商業情境，請向 [Artifex](https://artifex.com/licensing/) 確認 Ghostscript 商業授權。
