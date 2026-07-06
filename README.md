@@ -26,9 +26,15 @@
 
 ## 授權
 
-本專案自身的程式碼採 [MIT 授權](LICENSE)——可自由使用、修改、散布。
+本專案採用 [GNU Affero General Public License v3.0（AGPL-3.0）](LICENSE) 授權。
 
-**注意**：本工具執行時會從 CDN 載入下列第三方元件，各有其授權條款，不在本專案的 MIT 授權範圍內：
+因為本專案使用了 Ghostscript／ghostscript-wasm，而其授權為 AGPL-3.0，為避免授權標示不一致，整個專案以 AGPL-3.0 釋出，完整原始碼公開於本 repository。
+
+如果要把包含 Ghostscript 的版本用於閉源或商業產品，應另行確認 [Artifex 的商業授權](https://artifex.com/licensing/)。
+
+### 第三方元件
+
+本工具執行時會從 CDN 載入下列第三方元件，各有其授權條款：
 
 | 元件 | 用途 | 授權 |
 |---|---|---|
@@ -38,4 +44,4 @@
 | [heic2any](https://github.com/alexcorvi/heic2any) | HEIC 圖片轉換 | MIT |
 | [Ghostscript（WASM）](https://github.com/jsscheller/ghostscript-wasm) | 深度壓縮／高保真渲染 | **AGPL-3.0** |
 
-⚠️ **商業使用注意**：Ghostscript 採 AGPL-3.0 授權。若你要將本專案（或衍生作品）用於商業產品，請自行處理 Ghostscript 的授權——向 [Artifex](https://artifex.com/licensing/) 取得商業授權、遵循 AGPL 條款開源，或移除深度壓縮與高保真渲染功能。其餘元件均為 MIT／Apache 授權，商用無虞。
+⚠️ **商業使用注意**：本專案與 Ghostscript 均為 AGPL-3.0。若要用於閉源或商業產品，Ghostscript 部分請向 [Artifex](https://artifex.com/licensing/) 確認商業授權；本專案程式碼的使用則須遵循 AGPL-3.0 條款（衍生作品同樣需以 AGPL-3.0 開源）。
