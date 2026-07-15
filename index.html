@@ -37,7 +37,7 @@
   /* 分頁 */
   .tabs {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 5px;
     margin-bottom: 12px;
   }
@@ -384,8 +384,155 @@
     color: var(--text-light);
     padding: 16px 12px 24px;
   }
+  /* 填寫文字編輯器 */
+  .fill-stage-wrap {
+    margin-top: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    overflow: auto;
+    max-height: 78vh;
+  }
+  .fill-stage { position: relative; width: fit-content; margin: 0 auto; }
+  .fill-stage canvas { display: block; cursor: crosshair; }
+  .fill-box { position: absolute; z-index: 2; }
+  .fill-text {
+    min-width: 40px;
+    min-height: 1.2em;
+    outline: none;
+    border: 1.5px dashed transparent; /* 未選取時不擋視線，寬度固定避免選取時位移 */
+    border-radius: 2px;
+    line-height: 1.2;
+    white-space: pre;
+    font-family: "FillNotoTC", "Microsoft JhengHei", "PingFang TC", sans-serif;
+    background: transparent;
+    padding: 0;
+    margin: -1.5px; /* 抵銷邊框厚度，文字內容精確落在文字框原點（與輸出對齊） */
+    caret-color: var(--primary);
+  }
+  .fill-text:empty::before { content: '輸入文字'; color: #94a3b8; }
+  .fill-box:hover .fill-text { border-color: rgba(37, 99, 235, .35); }
+  .fill-box.sel .fill-text { border-style: solid; border-color: rgba(37, 99, 235, .55); }
+  /* 拖曳移動中:隱藏所有裝飾，只留純文字方便對齊底圖
+     （用 opacity 而非 display:none，否則把手消失會中斷 pointer capture） */
+  .fill-box.dragging .fill-text { border-color: transparent; }
+  .fill-box.dragging .fill-box-bar,
+  .fill-box.dragging .fill-resize { opacity: 0; }
+  /* 有設定寬度的文字框:逐字自動換行（與匯出端的斷行邏輯一致）。
+     content-box + min-width:0 讓換行寬度精確等於設定值，邊框畫在外面不影響。 */
+  .fill-box.wrapped .fill-text {
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-break: anywhere;
+    box-sizing: content-box;
+    min-width: 0;
+  }
+  .fill-resize {
+    position: absolute;
+    right: -5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 26px;
+    border: 1px solid rgba(37, 99, 235, .55);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, .75);
+    font-size: 0; /* 純豎條把手，不放圖示 */
+    cursor: ew-resize;
+    touch-action: none;
+    user-select: none;
+    display: none;
+  }
+  .fill-box.sel .fill-resize { display: block; }
+  /* 調整寬度中:把手與按鈕淡出，只留邊框顯示寬度拉到哪 */
+  .fill-box.resizing .fill-box-bar,
+  .fill-box.resizing .fill-resize { opacity: 0; }
+  .fill-box-bar {
+    position: absolute;
+    top: -30px;
+    left: -2px;
+    display: none;
+    gap: 3px;
+  }
+  .fill-box.sel .fill-box-bar { display: flex; }
+  .fill-drag, .fill-del {
+    width: 26px; height: 26px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
+    font-size: 13px;
+    line-height: 24px;
+    text-align: center;
+    user-select: none;
+    touch-action: none;
+  }
+  .fill-drag { cursor: grab; }
+  .fill-del { cursor: pointer; color: var(--danger); }
+  .fill-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .fill-toolbar select {
+    width: auto;
+    flex: none;
+    padding: 6px 8px;
+    font-size: 14px;
+  }
+  .fill-toolbar-sep {
+    width: 1px;
+    height: 22px;
+    background: var(--border);
+    margin: 0 2px;
+  }
+  .fill-zoom-label {
+    width: auto;
+    min-width: 54px;
+    padding: 0 6px;
+    font-size: 12px;
+  }
+  .fill-page-label {
+    font-size: 13px;
+    color: var(--text-light);
+    padding: 0 2px;
+    white-space: nowrap;
+  }
+  .fill-fs-btn {
+    width: auto;
+    padding: 0 10px;
+    font-size: 13px;
+    margin-left: auto;
+  }
+  #fillEditor .fill-stage-wrap { margin-top: 8px; }
+  #fillEditor.fs {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+  }
+  #fillEditor.fs .fill-toolbar {
+    margin: 0 0 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px;
+  }
+  #fillEditor.fs .fill-stage-wrap {
+    flex: 1;
+    max-height: none;
+    margin-top: 0;
+    background: var(--card);
+  }
+
   @media (max-width: 480px) {
     .tab-btn { font-size: 12px; padding: 8px 2px; }
+    .tabs { grid-template-columns: repeat(3, 1fr); }
     header h1 { font-size: 18px; }
   }
 </style>
@@ -403,6 +550,7 @@
   <div class="tabs">
     <button class="tab-btn active" data-tab="merge"><span class="icon">📑</span>PDF 合併</button>
     <button class="tab-btn" data-tab="split"><span class="icon">✂️</span>刪頁/拆分</button>
+    <button class="tab-btn" data-tab="fill"><span class="icon">✍️</span>填寫文字</button>
     <button class="tab-btn" data-tab="toimg"><span class="icon">🖼️</span>PDF 轉圖片</button>
     <button class="tab-btn" data-tab="topdf"><span class="icon">📷</span>圖片轉 PDF</button>
     <button class="tab-btn" data-tab="compress"><span class="icon">🗜️</span>PDF 壓縮</button>
@@ -448,6 +596,67 @@
       <div class="estimate" id="splitEstimate"></div>
       <button class="btn" id="splitBtn">匯出新 PDF</button>
       <div class="status" id="splitStatus"></div>
+    </div>
+  </div>
+
+  <!-- ===== 功能 F：填寫文字 ===== -->
+  <div class="panel" id="panel-fill">
+    <div class="card">
+      <h2>PDF 填寫文字</h2>
+      <p class="desc">在 PDF 上加入文字（填表格、加註記、補資料）。點頁面任意位置新增文字框，完成後匯出新的 PDF。</p>
+      <div class="drop-zone" id="fillDrop">
+        <span class="big">📂</span>點擊選擇或拖曳一個 PDF 檔案到這裡
+      </div>
+      <input type="file" id="fillInput" accept=".pdf,application/pdf">
+      <div id="fillInfo" style="display:none">
+        <span class="badge" id="fillBadge"></span>
+        <p class="hint">點下方頁面任意位置新增文字框並直接打字；點選文字框後可用 ✥ 拖曳移動、✕ 刪除，拖右側的 ↔ 把手可調整寬度讓文字自動換行（雙擊把手恢復自動寬度），字級、顏色、對齊會套用到選取中的文字框。可用 − / ＋ 縮放頁面，或按 ⛶ 進入全螢幕編輯。輸出字型為思源黑體（Noto Sans TC）。</p>
+        <div id="fillEditor">
+          <div class="fill-toolbar">
+            <select id="fillSize" title="字級">
+              <option value="9">9 pt</option>
+              <option value="10">10 pt</option>
+              <option value="12" selected>12 pt</option>
+              <option value="14">14 pt</option>
+              <option value="16">16 pt</option>
+              <option value="20">20 pt</option>
+              <option value="24">24 pt</option>
+              <option value="32">32 pt</option>
+            </select>
+            <select id="fillColor" title="顏色">
+              <option value="black" selected>黑色</option>
+              <option value="blue">藍色</option>
+              <option value="red">紅色</option>
+            </select>
+            <select id="fillAlign" title="對齊">
+              <option value="left" selected>靠左</option>
+              <option value="center">置中</option>
+              <option value="right">靠右</option>
+            </select>
+            <span class="fill-toolbar-sep"></span>
+            <button type="button" class="mini-btn" id="fillZoomOut" title="縮小">−</button>
+            <button type="button" class="mini-btn fill-zoom-label" id="fillZoomLabel" title="點一下恢復適合寬度">100%</button>
+            <button type="button" class="mini-btn" id="fillZoomIn" title="放大">＋</button>
+            <span class="fill-toolbar-sep"></span>
+            <button type="button" class="mini-btn" id="fillPrev" title="上一頁">‹</button>
+            <span id="fillPageLabel" class="fill-page-label"></span>
+            <button type="button" class="mini-btn" id="fillNext" title="下一頁">›</button>
+            <button type="button" class="mini-btn fill-fs-btn" id="fillFs">⛶ 全螢幕</button>
+          </div>
+          <div class="fill-stage-wrap" id="fillStageWrap">
+            <div class="fill-stage" id="fillStage">
+              <canvas id="fillCanvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="estimate" id="fillEstimate"></div>
+      <button class="btn" id="fillBtn">匯出已填寫的 PDF</button>
+      <div class="progress-wrap" id="fillProgress">
+        <div class="progress-bar"><div></div></div>
+        <div class="progress-text"></div>
+      </div>
+      <div class="status" id="fillStatus"></div>
     </div>
   </div>
 
@@ -614,6 +823,7 @@
 
 <!-- CDN 套件 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
@@ -1331,6 +1541,612 @@
       var outBlob = new Blob([bytes], { type: 'application/pdf' });
       downloadBlob(outBlob, base + '_選取頁面.pdf');
       showStatus(status, 'success', '✅ 已匯出 ' + pages.length + ' 頁的新 PDF（' +
+        formatSize(outBlob.size) + '），已開始下載。');
+    } catch (err) {
+      showStatus(status, 'error', '匯出失敗：' + err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  /* ================= 功能 F：填寫文字 ================= */
+
+  // 中文字型（思源黑體可變字型，只在匯出時需要完整位元組）
+  var FILL_FONT_URL = 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosanstc/NotoSansTC%5Bwght%5D.ttf';
+  // HarfBuzz 字型子集化引擎（fontkit 的子集化對 CJK 字型有 bug，改用 HarfBuzz）
+  var FILL_HB_URL = 'https://cdn.jsdelivr.net/npm/harfbuzzjs@1.4.0/dist/harfbuzz-subset.wasm';
+  var FILL_LINE_HEIGHT = 1.2; // 預覽 CSS 與輸出 PDF 使用同一行高
+  var FILL_COLORS = {
+    black: { css: '#000000', r: 0,   g: 0, b: 0 },
+    blue:  { css: '#0000cc', r: 0,   g: 0, b: 0.8 },
+    red:   { css: '#cc0000', r: 0.8, g: 0, b: 0 }
+  };
+
+  var fillFile = null;
+  var fillDoc = null;      // pdf.js 文件（渲染預覽 + 座標轉換）
+  var fillTotal = 0;
+  var fillCur = 1;
+  var fillScale = 1;       // 畫面 px ÷ PDF pt（以 scale-1 viewport 為準）
+  var fillVpW = 0;         // 目前頁面在 scale-1 viewport 的尺寸（pt）
+  var fillVpH = 0;
+  var fillBoxes = [];      // { page, vx, vy, size, color, text, el, textEl }
+  var fillActive = null;
+  var fillRenderToken = 0;
+  var fillZoom = 1;        // 使用者縮放倍率（1 = 適合寬度）
+
+  // 背景下載字型（只下載一次），同時註冊給預覽用讓畫面與輸出一致
+  var fillFontPromise = null;
+  function fillFetchFont() {
+    if (!fillFontPromise) {
+      fillFontPromise = fetch(FILL_FONT_URL).then(function (r) {
+        if (!r.ok) throw new Error('中文字型下載失敗（HTTP ' + r.status + '），請檢查網路後再試。');
+        return r.arrayBuffer();
+      }).then(function (buf) {
+        var bytes = new Uint8Array(buf);
+        // 預覽字型註冊完成後才算載入完成，避免匯出擷取斷行時字型還在半路上換掉
+        try {
+          var ff = new FontFace('FillNotoTC', buf.slice(0));
+          return ff.load().then(function (loaded) {
+            document.fonts.add(loaded);
+            return bytes;
+          }).catch(function () { return bytes; }); // 註冊失敗不影響輸出
+        } catch (e) { return bytes; }
+      }).catch(function (e) {
+        fillFontPromise = null; // 允許之後重試
+        throw e;
+      });
+    }
+    return fillFontPromise;
+  }
+
+  var fillHbPromise = null;
+  function fillLoadHb() {
+    if (!fillHbPromise) {
+      fillHbPromise = fetch(FILL_HB_URL).then(function (r) {
+        if (!r.ok) throw new Error('子集化引擎下載失敗（HTTP ' + r.status + '），請檢查網路後再試。');
+        return r.arrayBuffer();
+      }).then(function (buf) {
+        return WebAssembly.instantiate(buf);
+      }).then(function (res) {
+        return res.instance.exports;
+      }).catch(function (e) {
+        fillHbPromise = null;
+        throw e;
+      });
+    }
+    return fillHbPromise;
+  }
+
+  function hbTag(str) {
+    return str.split('').reduce(function (a, ch) { return (a << 8) + ch.charCodeAt(0); }, 0);
+  }
+
+  // 用 HarfBuzz 把字型裁剪成只含用到的字，可變字型並釘在 Regular 字重
+  function fillSubsetFont(hb, fontBytes, text) {
+    var input = hb.hb_subset_input_create_or_fail();
+    if (!input) throw new Error('子集化引擎初始化失敗');
+    var fontPtr = hb.malloc(fontBytes.byteLength);
+    new Uint8Array(hb.memory.buffer).set(fontBytes, fontPtr);
+    var blob = hb.hb_blob_create(fontPtr, fontBytes.byteLength, 2 /* WRITABLE */, 0, 0);
+    var face = hb.hb_face_create(blob, 0);
+    hb.hb_blob_destroy(blob);
+
+    // 保留所有 OpenType layout features
+    var layoutFeatures = hb.hb_subset_input_set(input, 6 /* LAYOUT_FEATURE_TAG */);
+    hb.hb_set_clear(layoutFeatures);
+    hb.hb_set_invert(layoutFeatures);
+
+    var unicodes = hb.hb_subset_input_unicode_set(input);
+    var i = 0;
+    while (i < text.length) {
+      var cp = text.codePointAt(i);
+      hb.hb_set_add(unicodes, cp);
+      i += cp > 0xFFFF ? 2 : 1;
+    }
+
+    hb.hb_subset_input_pin_axis_location(input, face, hbTag('wght'), 400);
+
+    var subset;
+    try {
+      subset = hb.hb_subset_or_fail(face, input);
+    } finally {
+      hb.hb_subset_input_destroy(input);
+    }
+    if (!subset) {
+      hb.hb_face_destroy(face);
+      hb.free(fontPtr);
+      throw new Error('字型子集化失敗');
+    }
+    var result = hb.hb_face_reference_blob(subset);
+    var offset = hb.hb_blob_get_data(result, 0);
+    var len = hb.hb_blob_get_length(result);
+    var out = new Uint8Array(hb.memory.buffer).slice(offset, offset + len);
+    hb.hb_blob_destroy(result);
+    hb.hb_face_destroy(subset);
+    hb.hb_face_destroy(face);
+    hb.free(fontPtr);
+    if (!len) throw new Error('字型子集化結果為空');
+    return out;
+  }
+
+  // 從瀏覽器實際排版結果讀出每一行文字（所見即所得，斷行位置與預覽完全一致）
+  function fillDomLines(b) {
+    var el = b.textEl;
+    var wasHidden = b.el.style.display === 'none'; // 其他頁的文字框要暫時顯示才量得到
+    if (wasHidden) { b.el.style.visibility = 'hidden'; b.el.style.display = ''; }
+    var lines = [];
+    var cur = '';
+    var lastTop = null;
+    try {
+      var range = document.createRange();
+      var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, null);
+      var node;
+      while ((node = walker.nextNode())) {
+        if (node.nodeType === 1) {
+          if (node.nodeName === 'BR') { lines.push(cur); cur = ''; lastTop = null; }
+          continue;
+        }
+        var s = node.nodeValue;
+        var i = 0;
+        while (i < s.length) {
+          var cp = s.codePointAt(i);
+          var len = cp > 0xFFFF ? 2 : 1;
+          var ch = s.substr(i, len);
+          if (ch === '\n') { lines.push(cur); cur = ''; lastTop = null; i += len; continue; }
+          range.setStart(node, i);
+          range.setEnd(node, i + len);
+          var r = range.getClientRects()[0];
+          if (r && r.height) {
+            if (lastTop !== null && r.top - lastTop > 1) { lines.push(cur); cur = ''; }
+            lastTop = r.top;
+          }
+          cur += ch;
+          i += len;
+        }
+      }
+    } finally {
+      if (wasHidden) { b.el.style.display = 'none'; b.el.style.visibility = ''; }
+    }
+    lines.push(cur);
+    return lines;
+  }
+
+  function fillUpdateEstimate() {
+    var el = $('fillEstimate');
+    var n = fillBoxes.filter(function (b) { return b.text.trim(); }).length;
+    el.textContent = n ? '✏️ 已加入 ' + n + ' 個文字框，匯出時會寫入 PDF。' : '';
+  }
+
+  function fillLayoutBox(b) {
+    b.el.style.display = b.page === fillCur ? '' : 'none';
+    b.el.style.left = (b.vx * fillScale) + 'px';
+    b.el.style.top = (b.vy * fillScale) + 'px';
+    b.el.style.fontSize = (b.size * fillScale) + 'px';
+    b.el.classList.toggle('wrapped', !!b.w);
+    b.textEl.style.width = b.w ? (b.w * fillScale) + 'px' : '';
+    b.textEl.style.textAlign = b.align;
+    b.textEl.style.color = FILL_COLORS[b.color].css;
+  }
+
+  function fillLayoutBoxes() {
+    fillBoxes.forEach(fillLayoutBox);
+  }
+
+  function fillSelect(b) {
+    if (fillActive === b) return;
+    fillDeselect();
+    fillActive = b;
+    b.el.classList.add('sel');
+    $('fillSize').value = String(b.size);
+    $('fillColor').value = b.color;
+    $('fillAlign').value = b.align;
+  }
+
+  function fillDeselect() {
+    if (fillActive) {
+      fillActive.el.classList.remove('sel');
+      fillActive = null;
+    }
+  }
+
+  function fillRemoveBox(b) {
+    if (fillActive === b) fillDeselect();
+    var idx = fillBoxes.indexOf(b);
+    if (idx !== -1) fillBoxes.splice(idx, 1);
+    if (b.el.parentNode) b.el.parentNode.removeChild(b.el);
+    fillUpdateEstimate();
+  }
+
+  function fillClearAll() {
+    fillDeselect();
+    fillBoxes.forEach(function (b) {
+      if (b.el.parentNode) b.el.parentNode.removeChild(b.el);
+    });
+    fillBoxes = [];
+    if (fillDoc) { fillDoc.destroy(); fillDoc = null; }
+    fillFile = null;
+    fillTotal = 0;
+    fillCur = 1;
+    fillZoom = 1;
+    var ed = $('fillEditor');
+    if (ed.classList.contains('fs')) {
+      ed.classList.remove('fs');
+      document.body.style.overflow = '';
+      $('fillFs').textContent = '⛶ 全螢幕';
+    }
+    fillUpdateEstimate();
+  }
+
+  function fillAddBox(vx, vy) {
+    var b = {
+      page: fillCur,
+      vx: vx,
+      vy: vy,
+      size: parseInt($('fillSize').value, 10),
+      color: $('fillColor').value,
+      align: $('fillAlign').value,
+      w: null,           // 文字框寬度（pt），null = 跟著內容自動
+      text: '',
+      el: null,
+      textEl: null
+    };
+
+    var el = document.createElement('div');
+    el.className = 'fill-box';
+
+    var bar = document.createElement('div');
+    bar.className = 'fill-box-bar';
+    var drag = document.createElement('span');
+    drag.className = 'fill-drag';
+    drag.textContent = '✥';
+    drag.title = '拖曳移動';
+    var del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'fill-del';
+    del.textContent = '✕';
+    del.title = '刪除文字框';
+    bar.appendChild(drag);
+    bar.appendChild(del);
+
+    var textEl = document.createElement('div');
+    textEl.className = 'fill-text';
+    textEl.setAttribute('contenteditable', 'plaintext-only');
+    if (!textEl.isContentEditable) textEl.setAttribute('contenteditable', 'true');
+
+    var resize = document.createElement('span');
+    resize.className = 'fill-resize';
+    resize.textContent = '↔';
+    resize.title = '拖曳調整寬度（雙擊恢復自動寬度）';
+
+    el.appendChild(bar);
+    el.appendChild(textEl);
+    el.appendChild(resize);
+    b.el = el;
+    b.textEl = textEl;
+
+    el.addEventListener('pointerdown', function () { fillSelect(b); });
+
+    textEl.addEventListener('input', function () {
+      b.text = textEl.innerText;
+      fillUpdateEstimate();
+    });
+    textEl.addEventListener('paste', function (e) {
+      e.preventDefault();
+      var t = (e.clipboardData || window.clipboardData).getData('text/plain');
+      if (t) document.execCommand('insertText', false, t);
+    });
+    textEl.addEventListener('blur', function () {
+      if (!b.text.trim()) fillRemoveBox(b);
+    });
+
+    del.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); });
+    del.addEventListener('click', function (e) {
+      e.stopPropagation();
+      fillRemoveBox(b);
+    });
+
+    drag.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      fillSelect(b);
+      var startX = e.clientX, startY = e.clientY;
+      var ox = b.vx, oy = b.vy;
+      drag.setPointerCapture(e.pointerId);
+      el.classList.add('dragging'); // 拖曳中隱藏邊框與按鈕，方便對齊底圖
+      function onMove(ev) {
+        b.vx = Math.min(Math.max(ox + (ev.clientX - startX) / fillScale, 0), fillVpW - 10);
+        b.vy = Math.min(Math.max(oy + (ev.clientY - startY) / fillScale, 0), fillVpH - 10);
+        fillLayoutBox(b);
+      }
+      function onUp() {
+        el.classList.remove('dragging');
+        drag.removeEventListener('pointermove', onMove);
+        drag.removeEventListener('pointerup', onUp);
+        drag.removeEventListener('pointercancel', onUp);
+      }
+      drag.addEventListener('pointermove', onMove);
+      drag.addEventListener('pointerup', onUp);
+      drag.addEventListener('pointercancel', onUp);
+    });
+
+    resize.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      fillSelect(b);
+      var startX = e.clientX;
+      var startW = b.w || (textEl.getBoundingClientRect().width / fillScale);
+      resize.setPointerCapture(e.pointerId);
+      el.classList.add('resizing'); // 調整中淡出把手與按鈕，只留邊框
+      function onMove(ev) {
+        var w = startW + (ev.clientX - startX) / fillScale;
+        b.w = Math.min(Math.max(w, Math.max(b.size, 16)), fillVpW - b.vx);
+        fillLayoutBox(b);
+      }
+      function onUp() {
+        el.classList.remove('resizing');
+        resize.removeEventListener('pointermove', onMove);
+        resize.removeEventListener('pointerup', onUp);
+        resize.removeEventListener('pointercancel', onUp);
+      }
+      resize.addEventListener('pointermove', onMove);
+      resize.addEventListener('pointerup', onUp);
+      resize.addEventListener('pointercancel', onUp);
+    });
+    resize.addEventListener('dblclick', function (e) {
+      e.stopPropagation();
+      b.w = null;
+      fillLayoutBox(b);
+    });
+
+    $('fillStage').appendChild(el);
+    fillBoxes.push(b);
+    fillLayoutBox(b);
+    return b;
+  }
+
+  async function fillRenderPage() {
+    if (!fillDoc) return;
+    var t = ++fillRenderToken;
+    var page = await fillDoc.getPage(fillCur);
+    if (t !== fillRenderToken) return;
+    var vp1 = page.getViewport({ scale: 1 });
+    var avail = $('fillStageWrap').clientWidth || 600;
+    var cssScale = Math.min(avail / vp1.width, 1.5) * fillZoom;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // 高倍縮放時限制畫布總像素，避免手機記憶體爆掉（畫面會稍微變糊但可操作）
+    var budget = IS_MOBILE ? 4e6 : 16e6;
+    var cssPixels = vp1.width * cssScale * vp1.height * cssScale;
+    if (cssPixels * dpr * dpr > budget) {
+      dpr = Math.max(Math.sqrt(budget / cssPixels), 0.5);
+    }
+    var vp = page.getViewport({ scale: cssScale * dpr });
+    var canvas = $('fillCanvas');
+    canvas.width = Math.floor(vp.width);
+    canvas.height = Math.floor(vp.height);
+    canvas.style.width = Math.floor(vp.width / dpr) + 'px';
+    canvas.style.height = Math.floor(vp.height / dpr) + 'px';
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    page.cleanup();
+    if (t !== fillRenderToken) return;
+    fillScale = cssScale;
+    fillVpW = vp1.width;
+    fillVpH = vp1.height;
+    $('fillPageLabel').textContent = '第 ' + fillCur + ' / ' + fillTotal + ' 頁';
+    $('fillZoomLabel').textContent = Math.round(fillZoom * 100) + '%';
+    $('fillPrev').disabled = fillCur <= 1;
+    $('fillNext').disabled = fillCur >= fillTotal;
+    fillLayoutBoxes();
+  }
+
+  // 調整縮放並盡量維持畫面中心不動
+  async function fillSetZoom(z) {
+    if (!fillDoc) return;
+    z = Math.min(Math.max(z, 0.5), 4);
+    if (z === fillZoom) return;
+    var wrap = $('fillStageWrap');
+    var prevScale = fillScale;
+    var cx = (wrap.scrollLeft + wrap.clientWidth / 2) / prevScale;
+    var cy = (wrap.scrollTop + wrap.clientHeight / 2) / prevScale;
+    fillZoom = z;
+    await fillRenderPage();
+    wrap.scrollLeft = cx * fillScale - wrap.clientWidth / 2;
+    wrap.scrollTop = cy * fillScale - wrap.clientHeight / 2;
+  }
+
+  function fillSetFs(on) {
+    var ed = $('fillEditor');
+    if (ed.classList.contains('fs') === on) return;
+    ed.classList.toggle('fs', on);
+    document.body.style.overflow = on ? 'hidden' : '';
+    $('fillFs').textContent = on ? '✕ 完成' : '⛶ 全螢幕';
+    fillRenderPage();
+  }
+
+  setupDropZone($('fillDrop'), $('fillInput'), async function (files) {
+    var status = $('fillStatus');
+    hideStatus(status);
+    $('fillInfo').style.display = 'none';
+    fillClearAll();
+
+    var f = files[0];
+    if (!(await isPdfFile(f))) {
+      showStatus(status, 'error', '「' + f.name + '」不是 PDF 檔案，請重新選擇。');
+      return;
+    }
+    if (!pdfjsLib) {
+      showStatus(status, 'error', 'PDF 顯示元件載入失敗，請檢查網路後重新整理頁面。');
+      return;
+    }
+    showStatus(status, 'info', '正在讀取 PDF…');
+    try {
+      var buf = await f.arrayBuffer();
+      fillDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+      fillTotal = fillDoc.numPages;
+      fillCur = 1;
+      fillFile = f;
+      $('fillBadge').textContent = '📄 ' + f.name + ' · 共 ' + fillTotal + ' 頁';
+      $('fillInfo').style.display = 'block';
+      hideStatus(status);
+      await fillRenderPage();
+      // 先在背景下載字型，匯出時就不用等
+      fillFetchFont().catch(function () { /* 匯出時會再試並顯示錯誤 */ });
+    } catch (e) {
+      fillClearAll();
+      showStatus(status, 'error', '無法讀取這個 PDF，檔案可能已損毀或有密碼保護。');
+    }
+  });
+
+  $('fillPrev').addEventListener('click', function () {
+    if (fillCur > 1) { fillCur--; fillDeselect(); fillRenderPage(); }
+  });
+  $('fillNext').addEventListener('click', function () {
+    if (fillCur < fillTotal) { fillCur++; fillDeselect(); fillRenderPage(); }
+  });
+
+  $('fillZoomIn').addEventListener('click', function () { fillSetZoom(fillZoom * 1.25); });
+  $('fillZoomOut').addEventListener('click', function () { fillSetZoom(fillZoom / 1.25); });
+  $('fillZoomLabel').addEventListener('click', function () { fillSetZoom(1); });
+  $('fillFs').addEventListener('click', function () {
+    fillSetFs(!$('fillEditor').classList.contains('fs'));
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && $('fillEditor').classList.contains('fs')) fillSetFs(false);
+  });
+
+  // 點頁面空白處：已有選取先取消，否則新增文字框
+  $('fillStage').addEventListener('click', function (e) {
+    if (e.target !== $('fillCanvas') || !fillDoc) return;
+    if (fillActive) { fillDeselect(); return; }
+    var rect = $('fillStage').getBoundingClientRect();
+    var vx = (e.clientX - rect.left) / fillScale;
+    var vy = (e.clientY - rect.top) / fillScale;
+    var b = fillAddBox(vx, vy);
+    fillSelect(b);
+    b.textEl.focus();
+  });
+
+  $('fillSize').addEventListener('change', function () {
+    if (fillActive) {
+      fillActive.size = parseInt(this.value, 10);
+      fillLayoutBox(fillActive);
+    }
+  });
+  $('fillColor').addEventListener('change', function () {
+    if (fillActive) {
+      fillActive.color = this.value;
+      fillLayoutBox(fillActive);
+    }
+  });
+  $('fillAlign').addEventListener('change', function () {
+    if (fillActive) {
+      fillActive.align = this.value;
+      fillLayoutBox(fillActive);
+    }
+  });
+
+  // 視窗大小改變時重新渲染目前頁面
+  var fillResizeTimer = null;
+  window.addEventListener('resize', function () {
+    if (!fillDoc) return;
+    clearTimeout(fillResizeTimer);
+    fillResizeTimer = setTimeout(fillRenderPage, 200);
+  });
+
+  $('fillBtn').addEventListener('click', async function () {
+    var status = $('fillStatus');
+    hideStatus(status);
+    if (!fillFile) {
+      showStatus(status, 'error', '請先選擇一個 PDF 檔案。');
+      return;
+    }
+    if (document.activeElement && document.activeElement.classList.contains('fill-text')) {
+      document.activeElement.blur();
+    }
+    var boxes = fillBoxes.filter(function (b) { return b.text.trim(); });
+    if (boxes.length === 0) {
+      showStatus(status, 'error', '請先點頁面任意位置新增文字框並輸入文字。');
+      return;
+    }
+    if (!window.fontkit) {
+      showStatus(status, 'error', '字型元件載入失敗，請檢查網路後重新整理頁面。');
+      return;
+    }
+    var btn = $('fillBtn');
+    btn.disabled = true;
+    try {
+      showStatus(status, 'info', '正在下載中文字型與子集化引擎（約 7 MB，只需下載一次，之後由瀏覽器快取）…');
+      var loaded = await Promise.all([fillFetchFont(), fillLoadHb()]);
+      var fontBytes = loaded[0];
+      var hb = loaded[1];
+      // 等預覽字型套用、版面重排安定，斷行擷取才會與最終畫面一致
+      try { await document.fonts.ready; } catch (e) { /* 不支援就略過 */ }
+      await nextFrame();
+
+      showStatus(status, 'info', '正在裁剪字型（只保留用到的字）…');
+      await nextFrame();
+      var usedText = boxes.map(function (b) { return b.text; }).join('');
+      var subsetBytes = fillSubsetFont(hb, fontBytes, usedText);
+
+      showStatus(status, 'info', '正在寫入 PDF…');
+      await nextFrame();
+      var buf = await fillFile.arrayBuffer();
+      var src = await PDFLib.PDFDocument.load(buf, { ignoreEncryption: true });
+      src.registerFontkit(window.fontkit);
+      var font = await src.embedFont(subsetBytes, { subset: false });
+
+      // 第一行 baseline 距文字框頂端 = 半行距 + 上緣高度（與 CSS line-height 對齊）
+      var asc = 0.88, desc = 0.12;
+      try {
+        var fk = font.embedder.font;
+        var os2 = fk['OS/2'];
+        if (os2 && os2.typoAscender) {
+          asc = os2.typoAscender / fk.unitsPerEm;
+          desc = Math.abs(os2.typoDescender) / fk.unitsPerEm;
+        }
+      } catch (e) { /* 用預設值 */ }
+      var baseFactor = asc + Math.max(0, (FILL_LINE_HEIGHT - (asc + desc)) / 2);
+
+      var pdfPages = src.getPages();
+      for (var i = 0; i < boxes.length; i++) {
+        var b = boxes[i];
+        var jsPage = await fillDoc.getPage(b.page);
+        var vp1 = jsPage.getViewport({ scale: 1 });
+        var rot = (((jsPage.rotate || 0) % 360) + 360) % 360;
+        var c = FILL_COLORS[b.color];
+        // 逐行繪製，才能做置中／靠右對齊；有設寬度的框直接沿用預覽的斷行結果
+        var lines = b.w ? fillDomLines(b) : b.text.split('\n');
+        var lineWidths = lines.map(function (ln) {
+          return ln ? font.widthOfTextAtSize(ln, b.size) : 0;
+        });
+        // 對齊基準寬度：有設定寬度用它，沒有就用最寬的一行（與 CSS text-align 行為一致）
+        var effW = b.w || Math.max.apply(null, lineWidths.concat([0]));
+        for (var li = 0; li < lines.length; li++) {
+          if (!lines[li]) continue;
+          var dx = b.align === 'center' ? (effW - lineWidths[li]) / 2 :
+                   b.align === 'right' ? (effW - lineWidths[li]) : 0;
+          // convertToPdfPoint 會處理縮放、旋轉與座標原點（左上 → 左下）
+          var pt = vp1.convertToPdfPoint(
+            b.vx + dx,
+            b.vy + b.size * baseFactor + li * b.size * FILL_LINE_HEIGHT
+          );
+          pdfPages[b.page - 1].drawText(lines[li], {
+            x: pt[0],
+            y: pt[1],
+            size: b.size,
+            font: font,
+            color: PDFLib.rgb(c.r, c.g, c.b),
+            rotate: PDFLib.degrees(rot)
+          });
+        }
+      }
+      var bytes = await src.save();
+      var base = fillFile.name.replace(/\.pdf$/i, '');
+      var outBlob = new Blob([bytes], { type: 'application/pdf' });
+      downloadBlob(outBlob, base + '_已填寫.pdf');
+      showStatus(status, 'success', '✅ 已寫入 ' + boxes.length + ' 段文字（' +
         formatSize(outBlob.size) + '），已開始下載。');
     } catch (err) {
       showStatus(status, 'error', '匯出失敗：' + err.message);

@@ -10,6 +10,7 @@
 |---|---|
 | 📑 PDF 合併 | 多檔上傳、拖曳排序、合併下載 |
 | ✂️ 刪頁／拆分 | 縮圖點選或輸入頁碼（如 `1,3,5-8`），匯出指定頁面 |
+| ✍️ 填寫文字 | 點頁面任意位置加入文字（填表格、加註記），支援中文，可調字級、顏色、對齊，可拖拉框寬自動換行，含縮放與全螢幕編輯 |
 | 🖼️ PDF 轉圖片 | PNG／JPG／WebP，96–300 DPI，可逐張或 ZIP 打包下載 |
 | 📷 圖片轉 PDF | JPG／PNG／HEIC，A4 或原始尺寸，自動置中縮放 |
 | 🗜️ PDF 壓縮 | 深度壓縮（保留文字）或轉圖壓縮（相容模式），顯示前後大小對比 |
@@ -18,7 +19,7 @@
 
 ## 使用方式
 
-不需要安裝、不需要建置。下載 `index.html` 用瀏覽器開啟即可，或直接使用上方的線上網址。第一次開啟需要網路載入 CDN 套件；深度壓縮功能第一次使用需下載約 16 MB 的引擎（之後由瀏覽器快取）。
+不需要安裝、不需要建置。下載 `index.html` 用瀏覽器開啟即可，或直接使用上方的線上網址。第一次開啟需要網路載入 CDN 套件；深度壓縮功能第一次使用需下載約 16 MB 的引擎、填寫文字功能第一次匯出需下載約 7 MB 的中文字型（之後由瀏覽器快取）。
 
 ## 隱私
 
@@ -42,6 +43,9 @@
 | [pdf.js](https://mozilla.github.io/pdf.js/) | PDF 渲染 | Apache-2.0 |
 | [JSZip](https://stuk.github.io/jszip/) | ZIP 打包 | MIT |
 | [heic2any](https://github.com/alexcorvi/heic2any) | HEIC 圖片轉換 | MIT |
+| [@pdf-lib/fontkit](https://github.com/Hopding/fontkit) | 自訂字型嵌入 | MIT |
+| [HarfBuzz（WASM）](https://github.com/harfbuzz/harfbuzzjs) | 字型子集化（填寫文字） | MIT（Old MIT） |
+| [Noto Sans TC](https://fonts.google.com/noto/specimen/Noto+Sans+TC) | 填寫文字的中文字型 | SIL OFL 1.1 |
 | [Ghostscript（WASM）](https://github.com/jsscheller/ghostscript-wasm) | 深度壓縮／高保真渲染 | **AGPL-3.0** |
 
 ⚠️ **商業使用注意**：AGPL-3.0 不禁止商業使用，但要求遵守開源義務。若要將包含 Ghostscript 的版本用於閉源產品，或無法遵守 AGPL-3.0 開源義務的商業情境，請向 [Artifex](https://artifex.com/licensing/) 確認 Ghostscript 商業授權。
