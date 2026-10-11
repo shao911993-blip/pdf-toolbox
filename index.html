@@ -403,6 +403,10 @@
   }
   .fill-stage { position: relative; width: fit-content; margin: 0 auto; }
   .fill-stage canvas { display: block; cursor: crosshair; }
+  /* 符號模式：半透明預覽跟著滑鼠，游標本身隱藏，預覽就是落點 */
+  .fill-ghost { position: absolute; z-index: 3; pointer-events: none; opacity: .45; display: none; }
+  .fill-ghost svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .fill-stage.ghosting canvas { cursor: none; }
   .fill-box { position: absolute; z-index: 2; }
   .fill-text {
     min-width: 40px;
@@ -476,6 +480,13 @@
     touch-action: none;
   }
   .fill-drag { cursor: grab; }
+  .fill-toolbar .fill-tool { width: auto; min-width: 32px; padding: 0 8px; font-size: 15px; }
+  .fill-toolbar .fill-tool.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+  /* 打勾符號：本身就能拖曳移動 */
+  .fill-sym { display: block; overflow: visible; cursor: move; touch-action: none; outline: 1.5px dashed transparent; outline-offset: 1px; }
+  .fill-box:hover .fill-sym { outline-color: rgba(37, 99, 235, .35); }
+  .fill-box.sel .fill-sym { outline-style: solid; outline-color: rgba(37, 99, 235, .55); }
+  .fill-box.dragging .fill-sym { outline-color: transparent; }
   .fill-del { cursor: pointer; color: var(--danger); }
   .fill-toolbar {
     display: flex;
@@ -852,9 +863,14 @@
       <input type="file" id="fillInput" accept=".pdf,application/pdf">
       <div id="fillInfo" style="display:none">
         <span class="badge" id="fillBadge"></span>
-        <p class="hint">點下方頁面任意位置新增文字框並直接打字；點選文字框後可用 ✥ 拖曳移動、✕ 刪除，拖右側的 ↔ 把手可調整寬度讓文字自動換行（雙擊把手恢復自動寬度），字型、字級、顏色、對齊會套用到選取中的文字框。可用 − / ＋ 縮放頁面，或按 ⛶ 進入全螢幕編輯。字型可選黑體（思源黑體）、明體（思源宋體）、楷體（霞鶩文楷），第一次選用某個字型時需下載約 7～10 MB。</p>
+        <p class="hint">要勾選表格選項時，先在工具列選 ✓／✗／○，滑鼠移到頁面上會先出現半透明預覽，點下去就放在預覽的位置，可以連續放（大小跟著「字級」、顏色跟著「顏色」，可拖曳移動）；選回「T 文字」即可繼續打字。<br>點下方頁面任意位置新增文字框並直接打字；點選文字框後可用 ✥ 拖曳移動、✕ 刪除，拖右側的 ↔ 把手可調整寬度讓文字自動換行（雙擊把手恢復自動寬度），字型、字級、顏色、對齊會套用到選取中的文字框。可用 − / ＋ 縮放頁面，或按 ⛶ 進入全螢幕編輯。字型可選黑體（思源黑體）、明體（思源宋體）、楷體（霞鶩文楷），第一次選用某個字型時需下載約 7～10 MB。</p>
         <div id="fillEditor">
           <div class="fill-toolbar">
+            <button type="button" class="mini-btn fill-tool active" data-tool="text" title="點頁面新增文字">T 文字</button>
+            <button type="button" class="mini-btn fill-tool" data-tool="check" title="點頁面放上打勾">✓</button>
+            <button type="button" class="mini-btn fill-tool" data-tool="cross" title="點頁面放上打叉">✗</button>
+            <button type="button" class="mini-btn fill-tool" data-tool="circle" title="點頁面放上圓圈">○</button>
+            <span class="fill-toolbar-sep"></span>
             <select id="fillFont" title="字型">
               <option value="sans" selected>黑體</option>
               <option value="serif">明體</option>
@@ -2730,6 +2746,15 @@
     red:   { css: '#cc0000', r: 0.8, g: 0, b: 0 }
   };
 
+  // 打勾符號：以「邊長 = 字級」的正方形為單位（0～1 座標），預覽 SVG 與輸出 PDF 共用同一組幾何，
+  // 用向量線條畫，不需要字型。stroke：線寬占邊長比例；lines：折線；circle：圓的半徑
+  var FILL_SYMBOLS = {
+    check:  { label: '打勾', stroke: 0.12, lines: [[[0.14, 0.55], [0.40, 0.80], [0.86, 0.20]]] },
+    cross:  { label: '打叉', stroke: 0.12, lines: [[[0.20, 0.20], [0.80, 0.80]], [[0.80, 0.20], [0.20, 0.80]]] },
+    circle: { label: '圓圈', stroke: 0.09, circle: 0.40 }
+  };
+  var fillTool = 'text';   // 點頁面時要放的東西：text 或 FILL_SYMBOLS 的 key
+
   var fillFile = null;
   var fillDoc = null;      // pdf.js 文件（渲染預覽 + 座標轉換）
   var fillTotal = 0;
@@ -2737,7 +2762,7 @@
   var fillScale = 1;       // 畫面 px ÷ PDF pt（以 scale-1 viewport 為準）
   var fillVpW = 0;         // 目前頁面在 scale-1 viewport 的尺寸（pt）
   var fillVpH = 0;
-  var fillBoxes = [];      // { page, vx, vy, font, size, color, text, el, textEl }
+  var fillBoxes = [];      // { type, page, vx, vy, font, size, color, text, el, textEl }（type：text 或符號）
   var fillActive = null;
   var fillRenderToken = 0;
   var fillZoom = 1;        // 使用者縮放倍率（1 = 適合寬度）
@@ -2894,16 +2919,32 @@
     return lines;
   }
 
+  // 「2 段文字、5 個符號」這類摘要；都沒有就回傳空字串
+  function fillContentSummary(boxes) {
+    var t = 0, s = 0;
+    boxes.forEach(function (b) {
+      if (b.type === 'text') { if (b.text.trim()) t++; } else s++;
+    });
+    var parts = [];
+    if (t) parts.push(t + ' 段文字');
+    if (s) parts.push(s + ' 個符號');
+    return parts.join('、');
+  }
+
   function fillUpdateEstimate() {
-    var el = $('fillEstimate');
-    var n = fillBoxes.filter(function (b) { return b.text.trim(); }).length;
-    el.textContent = n ? '✏️ 已加入 ' + n + ' 個文字框，匯出時會寫入 PDF。' : '';
+    var sum = fillContentSummary(fillBoxes);
+    $('fillEstimate').textContent = sum ? '✏️ 已加入 ' + sum + '，匯出時會寫入 PDF。' : '';
   }
 
   function fillLayoutBox(b) {
     b.el.style.display = b.page === fillCur ? '' : 'none';
     b.el.style.left = (b.vx * fillScale) + 'px';
     b.el.style.top = (b.vy * fillScale) + 'px';
+    if (b.type !== 'text') {
+      b.art.style.width = b.art.style.height = (b.size * fillScale) + 'px';
+      b.art.style.color = FILL_COLORS[b.color].css;
+      return;
+    }
     b.el.style.fontSize = (b.size * fillScale) + 'px';
     b.el.classList.toggle('wrapped', !!b.w);
     b.textEl.style.width = b.w ? (b.w * fillScale) + 'px' : '';
@@ -2922,7 +2963,7 @@
     fillDeselect();
     fillActive = b;
     b.el.classList.add('sel');
-    $('fillFont').value = b.font;
+    if (b.type === 'text') $('fillFont').value = b.font;
     $('fillSize').value = String(b.size);
     $('fillColor').value = b.color;
     $('fillAlign').value = b.align;
@@ -2963,12 +3004,47 @@
     fillUpdateEstimate();
   }
 
-  function fillAddBox(vx, vy) {
+  // 預覽用的符號 SVG（座標與 FILL_SYMBOLS 相同，放大 100 倍）
+  function fillSymbolSvg(type) {
+    var sym = FILL_SYMBOLS[type];
+    var ns = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 100 100');
+    svg.setAttribute('class', 'fill-sym');
+    var shapes = [];
+    if (sym.circle) {
+      var c = document.createElementNS(ns, 'circle');
+      c.setAttribute('cx', 50);
+      c.setAttribute('cy', 50);
+      c.setAttribute('r', sym.circle * 100);
+      shapes.push(c);
+    } else {
+      sym.lines.forEach(function (pts) {
+        var pl = document.createElementNS(ns, 'polyline');
+        pl.setAttribute('points', pts.map(function (p) { return p[0] * 100 + ',' + p[1] * 100; }).join(' '));
+        shapes.push(pl);
+      });
+    }
+    shapes.forEach(function (s) {
+      s.setAttribute('fill', 'none');
+      s.setAttribute('stroke', 'currentColor');
+      s.setAttribute('stroke-width', sym.stroke * 100);
+      s.setAttribute('stroke-linecap', 'round');
+      s.setAttribute('stroke-linejoin', 'round');
+      svg.appendChild(s);
+    });
+    return svg;
+  }
+
+  // 新增一個文字框或符號（type 省略＝文字框）
+  function fillAddBox(vx, vy, type) {
+    type = type || 'text';
     var b = {
+      type: type,
       page: fillCur,
       vx: vx,
       vy: vy,
-      font: $('fillFont').value,
+      font: type === 'text' ? $('fillFont').value : null,
       size: parseInt($('fillSize').value, 10),
       color: $('fillColor').value,
       align: $('fillAlign').value,
@@ -2994,37 +3070,10 @@
     del.title = '刪除文字框';
     bar.appendChild(drag);
     bar.appendChild(del);
-
-    var textEl = document.createElement('div');
-    textEl.className = 'fill-text';
-    textEl.setAttribute('contenteditable', 'plaintext-only');
-    if (!textEl.isContentEditable) textEl.setAttribute('contenteditable', 'true');
-
-    var resize = document.createElement('span');
-    resize.className = 'fill-resize';
-    resize.textContent = '↔';
-    resize.title = '拖曳調整寬度（雙擊恢復自動寬度）';
-
     el.appendChild(bar);
-    el.appendChild(textEl);
-    el.appendChild(resize);
     b.el = el;
-    b.textEl = textEl;
 
     el.addEventListener('pointerdown', function () { fillSelect(b); });
-
-    textEl.addEventListener('input', function () {
-      b.text = textEl.innerText;
-      fillUpdateEstimate();
-    });
-    textEl.addEventListener('paste', function (e) {
-      e.preventDefault();
-      var t = (e.clipboardData || window.clipboardData).getData('text/plain');
-      if (t) document.execCommand('insertText', false, t);
-    });
-    textEl.addEventListener('blur', function () {
-      if (!b.text.trim()) fillRemoveBox(b);
-    });
 
     del.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); });
     del.addEventListener('click', function (e) {
@@ -3032,58 +3081,96 @@
       fillRemoveBox(b);
     });
 
-    drag.addEventListener('pointerdown', function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      fillSelect(b);
-      var startX = e.clientX, startY = e.clientY;
-      var ox = b.vx, oy = b.vy;
-      drag.setPointerCapture(e.pointerId);
-      el.classList.add('dragging'); // 拖曳中隱藏邊框與按鈕，方便對齊底圖
-      function onMove(ev) {
-        b.vx = Math.min(Math.max(ox + (ev.clientX - startX) / fillScale, 0), fillVpW - 10);
-        b.vy = Math.min(Math.max(oy + (ev.clientY - startY) / fillScale, 0), fillVpH - 10);
-        fillLayoutBox(b);
-      }
-      function onUp() {
-        el.classList.remove('dragging');
-        drag.removeEventListener('pointermove', onMove);
-        drag.removeEventListener('pointerup', onUp);
-        drag.removeEventListener('pointercancel', onUp);
-      }
-      drag.addEventListener('pointermove', onMove);
-      drag.addEventListener('pointerup', onUp);
-      drag.addEventListener('pointercancel', onUp);
-    });
+    // 拖曳移動（✥ 把手；符號本身也可以直接拖）
+    function bindDrag(handle) {
+      handle.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        fillSelect(b);
+        var startX = e.clientX, startY = e.clientY;
+        var ox = b.vx, oy = b.vy;
+        try { handle.setPointerCapture(e.pointerId); } catch (err) { /* 合成事件可能不支援 */ }
+        el.classList.add('dragging'); // 拖曳中隱藏邊框與按鈕，方便對齊底圖
+        function onMove(ev) {
+          b.vx = Math.min(Math.max(ox + (ev.clientX - startX) / fillScale, 0), fillVpW - 10);
+          b.vy = Math.min(Math.max(oy + (ev.clientY - startY) / fillScale, 0), fillVpH - 10);
+          fillLayoutBox(b);
+        }
+        function onUp() {
+          el.classList.remove('dragging');
+          handle.removeEventListener('pointermove', onMove);
+          handle.removeEventListener('pointerup', onUp);
+          handle.removeEventListener('pointercancel', onUp);
+        }
+        handle.addEventListener('pointermove', onMove);
+        handle.addEventListener('pointerup', onUp);
+        handle.addEventListener('pointercancel', onUp);
+      });
+    }
+    bindDrag(drag);
 
-    resize.addEventListener('pointerdown', function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      fillSelect(b);
-      var startX = e.clientX;
-      var startW = b.w || (textEl.getBoundingClientRect().width / fillScale);
-      resize.setPointerCapture(e.pointerId);
-      el.classList.add('resizing'); // 調整中淡出把手與按鈕，只留邊框
-      function onMove(ev) {
-        var w = startW + (ev.clientX - startX) / fillScale;
-        b.w = Math.min(Math.max(w, Math.max(b.size, 16)), fillVpW - b.vx);
+    if (type !== 'text') {
+      del.title = '刪除' + FILL_SYMBOLS[type].label;
+      b.art = fillSymbolSvg(type);
+      el.appendChild(b.art);
+      bindDrag(b.art);
+    } else {
+      var textEl = document.createElement('div');
+      textEl.className = 'fill-text';
+      textEl.setAttribute('contenteditable', 'plaintext-only');
+      if (!textEl.isContentEditable) textEl.setAttribute('contenteditable', 'true');
+
+      var resize = document.createElement('span');
+      resize.className = 'fill-resize';
+      resize.textContent = '↔';
+      resize.title = '拖曳調整寬度（雙擊恢復自動寬度）';
+
+      el.appendChild(textEl);
+      el.appendChild(resize);
+      b.textEl = textEl;
+
+      textEl.addEventListener('input', function () {
+        b.text = textEl.innerText;
+        fillUpdateEstimate();
+      });
+      textEl.addEventListener('paste', function (e) {
+        e.preventDefault();
+        var t = (e.clipboardData || window.clipboardData).getData('text/plain');
+        if (t) document.execCommand('insertText', false, t);
+      });
+      textEl.addEventListener('blur', function () {
+        if (!b.text.trim()) fillRemoveBox(b);
+      });
+
+      resize.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        fillSelect(b);
+        var startX = e.clientX;
+        var startW = b.w || (textEl.getBoundingClientRect().width / fillScale);
+        resize.setPointerCapture(e.pointerId);
+        el.classList.add('resizing'); // 調整中淡出把手與按鈕，只留邊框
+        function onMove(ev) {
+          var w = startW + (ev.clientX - startX) / fillScale;
+          b.w = Math.min(Math.max(w, Math.max(b.size, 16)), fillVpW - b.vx);
+          fillLayoutBox(b);
+        }
+        function onUp() {
+          el.classList.remove('resizing');
+          resize.removeEventListener('pointermove', onMove);
+          resize.removeEventListener('pointerup', onUp);
+          resize.removeEventListener('pointercancel', onUp);
+        }
+        resize.addEventListener('pointermove', onMove);
+        resize.addEventListener('pointerup', onUp);
+        resize.addEventListener('pointercancel', onUp);
+      });
+      resize.addEventListener('dblclick', function (e) {
+        e.stopPropagation();
+        b.w = null;
         fillLayoutBox(b);
-      }
-      function onUp() {
-        el.classList.remove('resizing');
-        resize.removeEventListener('pointermove', onMove);
-        resize.removeEventListener('pointerup', onUp);
-        resize.removeEventListener('pointercancel', onUp);
-      }
-      resize.addEventListener('pointermove', onMove);
-      resize.addEventListener('pointerup', onUp);
-      resize.addEventListener('pointercancel', onUp);
-    });
-    resize.addEventListener('dblclick', function (e) {
-      e.stopPropagation();
-      b.w = null;
-      fillLayoutBox(b);
-    });
+      });
+    }
 
     $('fillStage').appendChild(el);
     fillBoxes.push(b);
@@ -3210,18 +3297,74 @@
   // 點頁面空白處：已有選取先取消，否則新增文字框
   $('fillStage').addEventListener('click', function (e) {
     if (e.target !== $('fillCanvas') || !fillDoc) return;
-    if (fillActive) { fillDeselect(); return; }
     var rect = $('fillStage').getBoundingClientRect();
     var vx = (e.clientX - rect.left) / fillScale;
     var vy = (e.clientY - rect.top) / fillScale;
+    if (fillTool !== 'text') {
+      // 符號模式：每點一下就放一個（以點擊處為中心），方便連續勾選多個方框
+      var side = parseInt($('fillSize').value, 10);
+      fillDeselect();
+      var s = fillAddBox(Math.max(0, vx - side / 2), Math.max(0, vy - side / 2), fillTool);
+      fillSelect(s);
+      fillUpdateEstimate();
+      return;
+    }
+    if (fillActive) { fillDeselect(); return; }
     var b = fillAddBox(vx, vy);
     fillSelect(b);
     b.textEl.focus();
   });
 
+  document.querySelectorAll('.fill-tool').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      fillTool = btn.dataset.tool;
+      document.querySelectorAll('.fill-tool').forEach(function (x) { x.classList.toggle('active', x === btn); });
+      fillDeselect();
+      fillGhostSvgTool = null; // 換工具：預覽圖形下次移動時重建
+      fillHideGhost();
+    });
+  });
+
+  // 符號模式的落點預覽：半透明符號跟著滑鼠，大小、顏色、置中方式都和實際放下去的一樣。
+  // 只在滑鼠（或筆）懸停時顯示；觸控沒有懸停，直接點就好。
+  var fillGhost = document.createElement('div');
+  fillGhost.className = 'fill-ghost';
+  $('fillStage').appendChild(fillGhost);
+  var fillGhostSvgTool = null;
+  var fillGhostPos = null; // 最後的滑鼠位置（stage 內的畫面 px），字級／顏色改變時就地更新
+
+  function fillHideGhost() {
+    fillGhost.style.display = 'none';
+    $('fillStage').classList.remove('ghosting');
+  }
+  function fillShowGhost() {
+    if (fillTool === 'text' || !fillGhostPos || !fillDoc) { fillHideGhost(); return; }
+    if (fillGhostSvgTool !== fillTool) {
+      fillGhost.innerHTML = '';
+      fillGhost.appendChild(fillSymbolSvg(fillTool));
+      fillGhost.firstChild.setAttribute('class', ''); // 不套用 .fill-sym 的拖曳游標與外框
+      fillGhostSvgTool = fillTool;
+    }
+    var px = parseInt($('fillSize').value, 10) * fillScale;
+    fillGhost.style.width = fillGhost.style.height = px + 'px';
+    fillGhost.style.left = (fillGhostPos.x - px / 2) + 'px';
+    fillGhost.style.top = (fillGhostPos.y - px / 2) + 'px';
+    fillGhost.style.color = FILL_COLORS[$('fillColor').value].css;
+    fillGhost.style.display = 'block';
+    $('fillStage').classList.add('ghosting');
+  }
+  $('fillStage').addEventListener('pointermove', function (e) {
+    // 移到已放的符號／文字框上（要選取或拖曳它）時不顯示預覽
+    if (e.pointerType === 'touch' || e.target !== $('fillCanvas')) { fillGhostPos = null; fillHideGhost(); return; }
+    var rect = $('fillStage').getBoundingClientRect();
+    fillGhostPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    fillShowGhost();
+  });
+  $('fillStage').addEventListener('pointerleave', function () { fillGhostPos = null; fillHideGhost(); });
+
   $('fillFont').addEventListener('change', function () {
     fillPreloadFont(this.value);
-    if (fillActive) {
+    if (fillActive && fillActive.type === 'text') {
       fillActive.font = this.value;
       fillLayoutBox(fillActive);
     }
@@ -3231,15 +3374,17 @@
       fillActive.size = parseInt(this.value, 10);
       fillLayoutBox(fillActive);
     }
+    if (fillGhost.style.display === 'block') fillShowGhost();
   });
   $('fillColor').addEventListener('change', function () {
     if (fillActive) {
       fillActive.color = this.value;
       fillLayoutBox(fillActive);
     }
+    if (fillGhost.style.display === 'block') fillShowGhost();
   });
   $('fillAlign').addEventListener('change', function () {
-    if (fillActive) {
+    if (fillActive && fillActive.type === 'text') {
       fillActive.align = this.value;
       fillLayoutBox(fillActive);
     }
@@ -3253,12 +3398,12 @@
     fillResizeTimer = setTimeout(fillRenderPage, 200);
   });
 
-  // 有內容的文字框（先讓正在編輯的框失焦，最後打的字才會寫回 b.text）
+  // 要寫進 PDF 的項目：有內容的文字框＋所有符號（先讓正在編輯的框失焦，最後打的字才會寫回 b.text）
   function fillTextBoxes() {
     if (document.activeElement && document.activeElement.classList.contains('fill-text')) {
       document.activeElement.blur();
     }
-    return fillBoxes.filter(function (b) { return b.text.trim(); });
+    return fillBoxes.filter(function (b) { return b.type !== 'text' || b.text.trim(); });
   }
 
   $('fillBtn').addEventListener('click', async function () {
@@ -3270,7 +3415,7 @@
     }
     var boxes = fillTextBoxes();
     if (boxes.length === 0) {
-      showStatus(status, 'error', '請先點頁面任意位置新增文字框並輸入文字。');
+      showStatus(status, 'error', '請先點頁面任意位置新增文字，或用 ✓／✗／○ 放上符號。');
       return;
     }
     var btns = [$('fillBtn'), $('fillToOrg')];
@@ -3280,7 +3425,7 @@
       var base = fillFile.name.replace(/\.pdf$/i, '');
       var outBlob = new Blob([bytes], { type: 'application/pdf' });
       downloadBlob(outBlob, base + '_已填寫.pdf');
-      showStatus(status, 'success', '✅ 已寫入 ' + boxes.length + ' 段文字（' +
+      showStatus(status, 'success', '✅ 已寫入 ' + fillContentSummary(boxes) + '（' +
         formatSize(outBlob.size) + '），已開始下載。');
     } catch (err) {
       showStatus(status, 'error', '匯出失敗：' + err.message);
@@ -3289,29 +3434,61 @@
     }
   });
 
+  // 用向量線條把符號畫進 PDF（convertToPdfPoint 逐點換算，頁面有旋轉也正確）
+  function fillDrawSymbol(pdfPage, b, vp1) {
+    var sym = FILL_SYMBOLS[b.type];
+    var side = b.size;
+    var c = FILL_COLORS[b.color];
+    var color = PDFLib.rgb(c.r, c.g, c.b);
+    var width = sym.stroke * side;
+    function pt(u, v) {
+      var p = vp1.convertToPdfPoint(b.vx + u * side, b.vy + v * side);
+      return { x: p[0], y: p[1] };
+    }
+    if (sym.circle) {
+      var ctr = pt(0.5, 0.5);
+      pdfPage.drawCircle({ x: ctr.x, y: ctr.y, size: sym.circle * side, borderColor: color, borderWidth: width });
+      return;
+    }
+    sym.lines.forEach(function (pts) {
+      for (var i = 0; i + 1 < pts.length; i++) {
+        pdfPage.drawLine({
+          start: pt(pts[i][0], pts[i][1]),
+          end: pt(pts[i + 1][0], pts[i + 1][1]),
+          thickness: width,
+          color: color,
+          lineCap: PDFLib.LineCapStyle.Round // 圓頭讓打勾的轉角接起來
+        });
+      }
+    });
+  }
+
   // 把文字框寫進 PDF，回傳新 PDF 的位元組（進度顯示在 status）
   async function fillBuildPdf(boxes, status) {
-    if (!window.fontkit) throw new Error('字型元件載入失敗，請檢查網路後重新整理頁面。');
-    // 用到哪幾種字型，就只下載、嵌入那幾種
+    // 用到哪幾種字型，就只下載、嵌入那幾種；只有符號時完全不用下載字型
     var keys = [];
-    boxes.forEach(function (b) { if (keys.indexOf(b.font) === -1) keys.push(b.font); });
-    var mb = keys.reduce(function (s, k) { return s + FILL_FONTS[k].mb; }, 0);
-    showStatus(status, 'info', '正在下載中文字型與子集化引擎（約 ' + mb + ' MB，只需下載一次，之後由瀏覽器快取）…');
-    var loaded = await Promise.all([fillLoadHb()].concat(keys.map(fillFetchFont)));
+    boxes.forEach(function (b) { if (b.type === 'text' && keys.indexOf(b.font) === -1) keys.push(b.font); });
+    var loaded = [];
+    if (keys.length) {
+      if (!window.fontkit) throw new Error('字型元件載入失敗，請檢查網路後重新整理頁面。');
+      var mb = keys.reduce(function (s, k) { return s + FILL_FONTS[k].mb; }, 0);
+      showStatus(status, 'info', '正在下載中文字型與子集化引擎（約 ' + mb + ' MB，只需下載一次，之後由瀏覽器快取）…');
+      loaded = await Promise.all([fillLoadHb()].concat(keys.map(fillFetchFont)));
+      // 等預覽字型套用、版面重排安定，斷行擷取才會與最終畫面一致
+      try { await document.fonts.ready; } catch (e) { /* 不支援就略過 */ }
+      await nextFrame();
+      showStatus(status, 'info', '正在裁剪字型（只保留用到的字）…');
+      await nextFrame();
+    }
     var hb = loaded[0];
-    // 等預覽字型套用、版面重排安定，斷行擷取才會與最終畫面一致
-    try { await document.fonts.ready; } catch (e) { /* 不支援就略過 */ }
-    await nextFrame();
 
-    showStatus(status, 'info', '正在裁剪字型（只保留用到的字）…');
-    await nextFrame();
     var buf = await fillFile.arrayBuffer();
     var src = await PDFLib.PDFDocument.load(buf, { ignoreEncryption: true });
-    src.registerFontkit(window.fontkit);
+    if (keys.length) src.registerFontkit(window.fontkit);
     var fonts = {}; // key → { font, baseFactor }
     for (var k = 0; k < keys.length; k++) {
       var key = keys[k];
-      var usedText = boxes.filter(function (b) { return b.font === key; })
+      var usedText = boxes.filter(function (b) { return b.type === 'text' && b.font === key; })
         .map(function (b) { return b.text; }).join('');
       var subsetBytes = fillSubsetFont(hb, loaded[k + 1], usedText, FILL_FONTS[key].variable);
       var embedded = await src.embedFont(subsetBytes, { subset: false });
@@ -3333,10 +3510,14 @@
     var pdfPages = src.getPages();
     for (var i = 0; i < boxes.length; i++) {
       var b = boxes[i];
-      var font = fonts[b.font].font;
-      var baseFactor = fonts[b.font].baseFactor;
       var jsPage = await fillDoc.getPage(b.page);
       var vp1 = jsPage.getViewport({ scale: 1 });
+      if (b.type !== 'text') {
+        fillDrawSymbol(pdfPages[b.page - 1], b, vp1);
+        continue;
+      }
+      var font = fonts[b.font].font;
+      var baseFactor = fonts[b.font].baseFactor;
       var rot = (((jsPage.rotate || 0) % 360) + 360) % 360;
       var c = FILL_COLORS[b.color];
       // 逐行繪製，才能做置中／靠右對齊；有設寬度的框直接沿用預覽的斷行結果
@@ -3379,7 +3560,7 @@
       return;
     }
     if (fillFile && fillTextBoxes().length &&
-        !confirm('「填寫文字」裡還有尚未匯出的文字，帶入新檔案會清掉它們。要繼續嗎？')) return;
+        !confirm('「填寫文字」裡還有尚未匯出的文字或符號，帶入新檔案會清掉它們。要繼續嗎？')) return;
     var btns = [$('orgBtn'), $('orgSelBtn'), $('orgToFill')];
     btns.forEach(function (b) { b.disabled = true; });
     showStatus(status, 'info', '正在套用排序與旋轉…');
@@ -3425,7 +3606,7 @@
       window.scrollTo(0, 0);
       if (await orgOpenFile(f)) {
         showStatus($('orgStatus'), 'info', boxes.length
-          ? '已從「填寫文字」帶入（已寫入 ' + boxes.length + ' 段文字），可以接著排序、旋轉或刪頁。'
+          ? '已從「填寫文字」帶入（已寫入 ' + fillContentSummary(boxes) + '），可以接著排序、旋轉或刪頁。'
           : '已從「填寫文字」帶入（還沒有加任何文字），可以接著排序、旋轉或刪頁。');
       }
     } catch (err) {
