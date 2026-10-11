@@ -12,6 +12,7 @@
 | ✂️ 刪頁／拆分 | 縮圖點選或輸入頁碼（如 `1,3,5-8`），匯出指定頁面 |
 | ✍️ 填寫文字 | 點頁面任意位置加入文字（填表格、加註記），支援中文，可調字級、顏色、對齊，可拖拉框寬自動換行，含縮放與全螢幕編輯 |
 | 🖼️ PDF 轉圖片 | PNG／JPG／WebP，96–300 DPI，可逐張或 ZIP 打包下載 |
+| 🧲 抓取圖片 | 把 PDF 內嵌的圖片（Figure）以原始解析度無損抽出，可依「Figure n／圖 n」圖說自動配對、只抓論文圖並以編號命名；向量圖表可用手動框選以 150–600 DPI 擷取 |
 | 📷 圖片轉 PDF | JPG／PNG／HEIC，A4 或原始尺寸，自動置中縮放 |
 | 🗜️ PDF 壓縮 | 深度壓縮（保留文字）或轉圖壓縮（相容模式），顯示前後大小對比 |
 
@@ -26,6 +27,8 @@
 所有 PDF 與圖片的讀取、轉換、壓縮都透過 WebAssembly 與 Canvas 在你的裝置上執行，任何檔案內容都不會離開你的瀏覽器。
 
 ## 授權
+
+Copyright (C) 2026 shao911993-blip
 
 本專案採用 [GNU Affero General Public License v3.0（AGPL-3.0）](LICENSE) 授權。
 
@@ -42,7 +45,7 @@
 | [pdf-lib](https://pdf-lib.js.org/) | PDF 合併／拆分／產生 | MIT |
 | [pdf.js](https://mozilla.github.io/pdf.js/) | PDF 渲染 | Apache-2.0 |
 | [JSZip](https://stuk.github.io/jszip/) | ZIP 打包 | MIT |
-| [heic2any](https://github.com/alexcorvi/heic2any) | HEIC 圖片轉換 | MIT |
+| [heic2any](https://github.com/alexcorvi/heic2any) | HEIC 圖片轉換 | MIT（內含 [libheif](https://github.com/strukturag/libheif)，LGPL-3.0） |
 | [@pdf-lib/fontkit](https://github.com/Hopding/fontkit) | 自訂字型嵌入 | MIT |
 | [HarfBuzz（WASM）](https://github.com/harfbuzz/harfbuzzjs) | 字型子集化（填寫文字） | MIT（Old MIT） |
 | [Noto Sans TC](https://fonts.google.com/noto/specimen/Noto+Sans+TC) | 填寫文字的中文字型 | SIL OFL 1.1 |

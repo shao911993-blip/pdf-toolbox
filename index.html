@@ -1,4 +1,10 @@
 <!DOCTYPE html>
+<!--
+  PDF 小工具箱
+  Copyright (C) 2026 shao911993-blip
+  本程式為自由軟體，依 GNU Affero General Public License v3.0 授權，詳見 LICENSE。
+  原始碼：https://github.com/shao911993-blip/pdf-toolbox
+-->
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
@@ -37,7 +43,7 @@
   /* 分頁 */
   .tabs {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(8, 1fr);
     gap: 5px;
     margin-bottom: 12px;
   }
@@ -52,6 +58,8 @@
     text-align: center;
     line-height: 1.3;
     transition: all .15s;
+    text-decoration: none;
+    display: block;
   }
   .tab-btn .icon { display: block; font-size: 20px; margin-bottom: 2px; }
   .tab-btn.active {
@@ -530,6 +538,46 @@
     background: var(--card);
   }
 
+  /* 抓取圖片 */
+  .seg-tabs { display: flex; gap: 6px; margin-top: 12px; }
+  .seg-btn {
+    flex: 1;
+    padding: 9px 6px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text-light);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .seg-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    font-weight: 600;
+  }
+  .ex-stage-wrap {
+    margin-top: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    overflow: auto;
+    max-height: 78vh;
+  }
+  .ex-stage { position: relative; width: fit-content; margin: 0 auto; touch-action: none; }
+  .ex-stage canvas { display: block; cursor: crosshair; }
+  .ex-sel {
+    position: absolute;
+    border: 1.5px dashed var(--primary);
+    background: rgba(37, 99, 235, .12);
+    pointer-events: none;
+    display: none;
+  }
+
+  @media (max-width: 600px) {
+    .tabs { grid-template-columns: repeat(4, 1fr); }
+  }
   @media (max-width: 480px) {
     .tab-btn { font-size: 12px; padding: 8px 2px; }
     .tabs { grid-template-columns: repeat(3, 1fr); }
@@ -552,6 +600,7 @@
     <button class="tab-btn" data-tab="split"><span class="icon">✂️</span>刪頁/拆分</button>
     <button class="tab-btn" data-tab="fill"><span class="icon">✍️</span>填寫文字</button>
     <button class="tab-btn" data-tab="toimg"><span class="icon">🖼️</span>PDF 轉圖片</button>
+    <button class="tab-btn" data-tab="extract"><span class="icon">🧲</span>抓取圖片</button>
     <button class="tab-btn" data-tab="topdf"><span class="icon">📷</span>圖片轉 PDF</button>
     <button class="tab-btn" data-tab="compress"><span class="icon">🗜️</span>PDF 壓縮</button>
   </div>
@@ -720,6 +769,81 @@
     </div>
   </div>
 
+  <!-- ===== 功能 G：抓取圖片 ===== -->
+  <div class="panel" id="panel-extract">
+    <div class="card">
+      <h2>抓取圖片（Figure）</h2>
+      <p class="desc">把 PDF 裡的圖片抓出來存成 PNG。自動模式以原始解析度無損抽取內嵌圖片；框選模式可擷取頁面上任意範圍（包括向量圖表）。</p>
+      <div class="drop-zone" id="exDrop">
+        <span class="big">📂</span>點擊選擇或拖曳一個 PDF 檔案到這裡
+      </div>
+      <input type="file" id="exInput" accept=".pdf,application/pdf">
+      <div class="status" id="exLoadStatus"></div>
+      <div id="exInfo" style="display:none">
+        <span class="badge" id="exBadge"></span>
+        <div class="seg-tabs">
+          <button type="button" class="seg-btn active" id="exModeAuto">🔍 自動抽取內嵌圖</button>
+          <button type="button" class="seg-btn" id="exModeCrop">✂️ 手動框選擷取</button>
+        </div>
+
+        <!-- 自動抽取 -->
+        <div id="exAutoPane">
+          <p class="hint">掃描 PDF 內嵌的點陣圖（照片、掃描頁、實驗結果圖），以<b>原始解析度無損匯出</b>，品質與檔案內嵌的完全相同。⚠️ 注意：用線條畫的向量圖（折線圖、TikZ 示意圖、流程圖）在 PDF 裡不是圖片檔，自動模式抓不到——這種請改用「手動框選擷取」。</p>
+          <label class="field-label" for="exScanPages">要掃描的頁碼</label>
+          <input type="text" id="exScanPages" inputmode="numeric" placeholder="例如：1,3,5-8（留空 = 全部頁面）">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:10px;cursor:pointer">
+            <input type="checkbox" id="exOnlyFig" checked style="display:inline;width:16px;height:16px">
+            只抓論文圖：僅抽取附近有「Figure n／圖 n」圖說的圖片，並以編號命名
+          </label>
+          <p class="hint">依圖說文字自動配對。若 PDF 沒有文字層（整頁掃描）或圖說格式特殊導致漏抓，請取消勾選改抓全部內嵌圖。</p>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:10px;cursor:pointer">
+            <input type="checkbox" id="exHideSmall" checked style="display:inline;width:16px;height:16px">
+            忽略小圖示（寬或高小於 40 像素的 logo、裝飾圖）
+          </label>
+          <button class="btn" id="exScanBtn">🔍 掃描並抽取圖片</button>
+          <div class="progress-wrap" id="exScanProgress">
+            <div class="progress-bar"><div></div></div>
+            <div class="progress-text"></div>
+          </div>
+          <div class="status" id="exAutoStatus"></div>
+          <button class="btn secondary" id="exAutoZipBtn" style="display:none">📦 全部打包下載（ZIP）</button>
+          <div class="img-results" id="exAutoResults"></div>
+        </div>
+
+        <!-- 手動框選 -->
+        <div id="exCropPane" style="display:none">
+          <p class="hint">在下方頁面上<b>按住拖曳</b>框出要擷取的範圍，再按「擷取框選範圍」。任何內容都能抓（含向量圖表），輸出為所選解析度渲染的 PNG。</p>
+          <div class="fill-toolbar">
+            <select id="exDpi" title="輸出解析度">
+              <option value="150">150 DPI</option>
+              <option value="300" selected>300 DPI（推薦）</option>
+              <option value="600">600 DPI（超高清）</option>
+            </select>
+            <span class="fill-toolbar-sep"></span>
+            <button type="button" class="mini-btn" id="exZoomOut" title="縮小">−</button>
+            <button type="button" class="mini-btn fill-zoom-label" id="exZoomLabel" title="點一下恢復適合寬度">100%</button>
+            <button type="button" class="mini-btn" id="exZoomIn" title="放大">＋</button>
+            <span class="fill-toolbar-sep"></span>
+            <button type="button" class="mini-btn" id="exPrev" title="上一頁">‹</button>
+            <span id="exPageLabel" class="fill-page-label"></span>
+            <button type="button" class="mini-btn" id="exNext" title="下一頁">›</button>
+          </div>
+          <div class="ex-stage-wrap" id="exStageWrap">
+            <div class="ex-stage" id="exStage">
+              <canvas id="exCanvas"></canvas>
+              <div class="ex-sel" id="exSel"></div>
+            </div>
+          </div>
+          <div class="estimate" id="exCropEstimate"></div>
+          <button class="btn" id="exCropBtn">✂️ 擷取框選範圍</button>
+          <div class="status" id="exCropStatus"></div>
+          <button class="btn secondary" id="exCropZipBtn" style="display:none">📦 全部打包下載（ZIP）</button>
+          <div class="img-results" id="exCropResults"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== 功能 D：圖片轉 PDF ===== -->
   <div class="panel" id="panel-topdf">
     <div class="card">
@@ -801,7 +925,7 @@
 </div>
 
 <footer>PDF 小工具箱 · 純瀏覽器本機處理，不需要網路上傳檔案<br>
-本工具採用 AGPL-3.0 授權，完整原始碼公開於 <a href="https://github.com/shao911993-blip/pdf-toolbox" target="_blank" rel="noopener">GitHub</a><br>
+© 2026 shao911993-blip · 本工具採用 AGPL-3.0 授權，完整原始碼公開於 <a href="https://github.com/shao911993-blip/pdf-toolbox" target="_blank" rel="noopener">GitHub</a><br>
 深度壓縮功能使用 <a href="https://www.ghostscript.com/" target="_blank" rel="noopener">Ghostscript</a>（AGPL-3.0，<a href="https://github.com/jsscheller/ghostscript-wasm" target="_blank" rel="noopener">WASM 版原始碼</a>）</footer>
 
 <!-- 全頁檢視器 -->
@@ -1251,7 +1375,7 @@
 
   /* ================= 分頁切換 ================= */
 
-  var tabBtns = document.querySelectorAll('.tab-btn');
+  var tabBtns = document.querySelectorAll('.tab-btn[data-tab]');
   tabBtns.forEach(function (btn) {
     btn.addEventListener('click', function () {
       tabBtns.forEach(function (b) { b.classList.remove('active'); });
@@ -2446,7 +2570,7 @@
     return blobs;
   }
 
-  function addImgResult(blob, filename, caption) {
+  function addImgResultTo(container, blob, filename, caption) {
     var url = URL.createObjectURL(blob);
     var div = document.createElement('div');
     div.className = 'img-result';
@@ -2468,7 +2592,11 @@
     a.textContent = '⬇ 下載';
     div.appendChild(a);
 
-    $('toimgResults').appendChild(div);
+    container.appendChild(div);
+  }
+
+  function addImgResult(blob, filename, caption) {
+    addImgResultTo($('toimgResults'), blob, filename, caption);
   }
 
   $('toimgZipBtn').addEventListener('click', async function () {
@@ -2486,6 +2614,624 @@
       showStatus(status, 'success', '✅ ZIP 已開始下載（' + formatSize(zipBlob.size) + '）。');
     } catch (err) {
       showStatus(status, 'error', '打包失敗：' + err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  /* ================= 功能 G：抓取圖片 ================= */
+
+  var exFile = null;
+  var exDoc = null; // pdf.js 文件（掃描與框選共用）
+  var exTotalPages = 0;
+  var exAutoOutputs = []; // { blob, filename }
+  var exCropOutputs = [];
+  var exCropCount = 0;
+
+  var exCrop = {
+    page: 1,
+    fit: true,       // 適合寬度模式
+    zoom: 1,         // fit=false 時的縮放（相對 PDF 原始尺寸）
+    cssScale: 1,     // 目前畫面上 1 PDF 單位對應的 CSS 像素
+    sel: null,       // 框選範圍（CSS 像素，相對畫布左上角）
+    rendered: false, // 是否已渲染過（切到框選分頁時才首次渲染）
+    renderTask: null,
+    token: 0
+  };
+
+  function exBaseName() {
+    return exFile ? exFile.name.replace(/\.pdf$/i, '') : 'PDF';
+  }
+
+  setupDropZone($('exDrop'), $('exInput'), async function (files) {
+    var status = $('exLoadStatus');
+    hideStatus(status);
+    hideStatus($('exAutoStatus'));
+    hideStatus($('exCropStatus'));
+    $('exInfo').style.display = 'none';
+    $('exAutoResults').innerHTML = '';
+    $('exCropResults').innerHTML = '';
+    $('exAutoZipBtn').style.display = 'none';
+    $('exCropZipBtn').style.display = 'none';
+    $('exCropEstimate').textContent = '';
+    $('exScanPages').value = '';
+    exAutoOutputs = [];
+    exCropOutputs = [];
+    exCropCount = 0;
+    exFile = null;
+    if (exCrop.renderTask) {
+      try { exCrop.renderTask.cancel(); } catch (e) {}
+      exCrop.renderTask = null;
+    }
+    if (exDoc) { exDoc.destroy(); exDoc = null; }
+    exCrop.page = 1;
+    exCrop.fit = true;
+    exCrop.sel = null;
+    exCrop.rendered = false;
+    exCrop.token++;
+
+    var f = files[0];
+    if (!(await isPdfFile(f))) {
+      showStatus(status, 'error', '「' + f.name + '」不是 PDF 檔案，請重新選擇。');
+      return;
+    }
+    if (!pdfjsLib) {
+      showStatus(status, 'error', 'PDF 顯示元件載入失敗，請檢查網路後重新整理頁面。');
+      return;
+    }
+    showStatus(status, 'info', '正在讀取 PDF…');
+    try {
+      var buf = await f.arrayBuffer();
+      exDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+      exTotalPages = exDoc.numPages;
+      exFile = f;
+      $('exBadge').textContent = '📄 ' + f.name + ' · 共 ' + exTotalPages + ' 頁';
+      $('exInfo').style.display = 'block';
+      exSetMode('auto');
+      hideStatus(status);
+    } catch (e) {
+      showStatus(status, 'error', '無法讀取這個 PDF，檔案可能已損毀或有密碼保護。');
+    }
+  });
+
+  function exSetMode(mode) {
+    $('exModeAuto').classList.toggle('active', mode === 'auto');
+    $('exModeCrop').classList.toggle('active', mode === 'crop');
+    $('exAutoPane').style.display = mode === 'auto' ? '' : 'none';
+    $('exCropPane').style.display = mode === 'crop' ? '' : 'none';
+    if (mode === 'crop' && exDoc && !exCrop.rendered) exCropRender();
+  }
+  $('exModeAuto').addEventListener('click', function () { exSetMode('auto'); });
+  $('exModeCrop').addEventListener('click', function () { exSetMode('crop'); });
+
+  /* ---------- 自動抽取內嵌圖片 ---------- */
+
+  // 從 page.objs / commonObjs 取出已解碼的圖片物件（未解析成功時回傳 null）
+  function exGetPageObj(page, id) {
+    return new Promise(function (resolve) {
+      var store = id.indexOf('g_') === 0 ? page.commonObjs : page.objs;
+      var settled = false;
+      function done(v) { if (!settled) { settled = true; resolve(v); } }
+      try { store.get(id, done); } catch (e) { done(null); return; }
+      setTimeout(function () { done(null); }, 5000);
+    });
+  }
+
+  // 把 pdf.js 解碼後的圖片物件畫到 canvas（支援 ImageBitmap 與原始像素兩種形式）
+  function exImageToCanvas(img) {
+    if (!img || !img.width || !img.height) return null;
+    var canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    var ctx = canvas.getContext('2d');
+    if (img.bitmap) { // 新版 pdf.js 在支援 OffscreenCanvas 的瀏覽器用 ImageBitmap 傳遞
+      ctx.drawImage(img.bitmap, 0, 0);
+      return canvas;
+    }
+    if (!img.data) return null;
+    var w = img.width, h = img.height;
+    var out = ctx.createImageData(w, h);
+    var dst = out.data, src = img.data;
+    if (src.length === w * h * 4) { // RGBA（含透明度／SMask 已合併）
+      dst.set(src);
+    } else if (src.length === w * h * 3) { // RGB
+      for (var i = 0, j = 0, n = w * h * 3; i < n; i += 3, j += 4) {
+        dst[j] = src[i]; dst[j + 1] = src[i + 1]; dst[j + 2] = src[i + 2]; dst[j + 3] = 255;
+      }
+    } else if (img.kind === 1) { // 灰階 1bpp：每列補滿到整數位元組，1=白
+      var rowBytes = (w + 7) >> 3;
+      for (var y = 0; y < h; y++) {
+        for (var x = 0; x < w; x++) {
+          var v = ((src[y * rowBytes + (x >> 3)] >> (7 - (x & 7))) & 1) ? 255 : 0;
+          var o = (y * w + x) * 4;
+          dst[o] = dst[o + 1] = dst[o + 2] = v; dst[o + 3] = 255;
+        }
+      }
+    } else {
+      return null; // 不認得的像素格式，寧可略過也不要輸出破圖
+    }
+    ctx.putImageData(out, 0, 0);
+    return canvas;
+  }
+
+  // 走訪繪圖指令並追蹤座標矩陣（CTM），算出每張圖畫在頁面上的範圍（PDF 使用者座標，y 向上）
+  function exCollectPlacements(ops) {
+    var OPS = pdfjsLib.OPS;
+    var ctm = [1, 0, 0, 1, 0, 0];
+    var stack = [];
+    var out = [];
+    function mul(A, B) { // 先套 B 再套 A
+      return [
+        A[0] * B[0] + A[2] * B[1], A[1] * B[0] + A[3] * B[1],
+        A[0] * B[2] + A[2] * B[3], A[1] * B[2] + A[3] * B[3],
+        A[0] * B[4] + A[2] * B[5] + A[4], A[1] * B[4] + A[3] * B[5] + A[5]
+      ];
+    }
+    for (var j = 0; j < ops.fnArray.length; j++) {
+      var fn = ops.fnArray[j];
+      var args = ops.argsArray[j];
+      if (fn === OPS.save) {
+        stack.push(ctm.slice());
+      } else if (fn === OPS.restore) {
+        if (stack.length) ctm = stack.pop();
+      } else if (fn === OPS.transform) {
+        ctm = mul(ctm, args);
+      } else if (fn === OPS.paintImageXObject || fn === OPS.paintImageXObjectRepeat ||
+                 fn === OPS.paintInlineImageXObject) {
+        // 圖片畫進單位正方形，經 CTM 變換後的四個角就是其頁面範圍
+        var xs = [ctm[4], ctm[0] + ctm[4], ctm[2] + ctm[4], ctm[0] + ctm[2] + ctm[4]];
+        var ys = [ctm[5], ctm[1] + ctm[5], ctm[3] + ctm[5], ctm[1] + ctm[3] + ctm[5]];
+        out.push({
+          inline: fn === OPS.paintInlineImageXObject,
+          arg: args[0],
+          x0: Math.min.apply(null, xs), x1: Math.max.apply(null, xs),
+          y0: Math.min.apply(null, ys), y1: Math.max.apply(null, ys)
+        });
+      }
+    }
+    return out;
+  }
+
+  // 從文字層找出「Figure n／Fig. n／圖 n」開頭的圖說行，回傳其編號與位置
+  async function exCollectCaptions(page) {
+    var tc = await page.getTextContent();
+    var lines = {}; // y 值（3pt 容差）→ 該行的文字片段
+    tc.items.forEach(function (it) {
+      if (!it.str || !it.transform) return;
+      var key = Math.round(it.transform[5] / 3);
+      if (!lines[key]) lines[key] = { y: it.transform[5], parts: [] };
+      lines[key].parts.push({ x: it.transform[4], w: it.width || 0, str: it.str });
+    });
+    var captions = [];
+    Object.keys(lines).forEach(function (k) {
+      var ln = lines[k];
+      ln.parts.sort(function (a, b) { return a.x - b.x; });
+      // 兩張圖並排時，各自的圖說在同一水平線上：遇到大間隙就切成獨立段落分別比對。
+      // 純空白項目會橫跨欄間形成假連接，不參與間隙計算也不更新段落邊界。
+      var segs = [];
+      ln.parts.forEach(function (p) {
+        var blank = !p.str.trim();
+        var last = segs[segs.length - 1];
+        if (last && (blank || p.x - last.x1 <= 14)) {
+          last.text += p.str;
+          if (!blank) last.x1 = Math.max(last.x1, p.x + p.w);
+        } else if (!blank) {
+          segs.push({ text: p.str, x0: p.x, x1: p.x + p.w });
+        }
+      });
+      segs.forEach(function (seg) {
+        // 編號後要求標點（或段落就此結束），避免內文的「如 Figure 4 所示」被誤認成圖說
+        var m = seg.text.match(/^\s*(figure|fig\.?|圖|图)\s*[.．]?\s*(\d+)\s*(?:[:：.。]|$)/i);
+        if (!m) return;
+        captions.push({
+          label: /^[圖图]/.test(m[1]) ? '圖' : 'Figure',
+          num: parseInt(m[2], 10),
+          y: ln.y,
+          x0: seg.x0,
+          x1: seg.x1
+        });
+      });
+    });
+    return captions;
+  }
+
+  // 幫一張圖找最近的圖說：優先找正下方的（論文慣例），其次上方；水平範圍要重疊
+  function exMatchCaption(pl, captions) {
+    var best = null;
+    var bestScore = Infinity;
+    captions.forEach(function (c) {
+      if (Math.min(pl.x1, c.x1) - Math.max(pl.x0, c.x0) < -20) return; // 不在同一欄
+      var score;
+      if (c.y <= pl.y0 + 8) score = pl.y0 - c.y;            // 圖說在圖下方
+      else if (c.y >= pl.y1 - 8) score = (c.y - pl.y1) * 2.5; // 圖說在圖上方（少見，加權）
+      else score = 0;                                          // 與圖垂直重疊（如文繞圖）
+      if (score < bestScore) { bestScore = score; best = c; }
+    });
+    return bestScore <= 250 ? best : null; // 距離超過 250pt 視為無關
+  }
+
+  $('exScanBtn').addEventListener('click', async function () {
+    var status = $('exAutoStatus');
+    var progress = $('exScanProgress');
+    hideStatus(status);
+    if (!exDoc) {
+      showStatus(status, 'error', '請先選擇一個 PDF 檔案。');
+      return;
+    }
+
+    var pages;
+    try {
+      var text = $('exScanPages').value.trim();
+      if (text) {
+        pages = parsePageRange(text, exTotalPages);
+        pages = pages.filter(function (p, i) { return pages.indexOf(p) === i; })
+                     .sort(function (a, b) { return a - b; });
+      } else {
+        pages = [];
+        for (var p = 1; p <= exTotalPages; p++) pages.push(p);
+      }
+    } catch (e) {
+      showStatus(status, 'error', e.message);
+      return;
+    }
+
+    var hideSmall = $('exHideSmall').checked;
+    var onlyFig = $('exOnlyFig').checked;
+    var btn = $('exScanBtn');
+    btn.disabled = true;
+    $('exAutoResults').innerHTML = '';
+    $('exAutoZipBtn').style.display = 'none';
+    exAutoOutputs = [];
+
+    var seen = {}; // 同一張圖在頁面重複出現、或全域圖跨頁重複時只抽一次
+    var smallSkipped = 0;
+    var noCapSkipped = 0; // 只抓論文圖模式下，沒有對應圖說而略過的張數
+    var capSeen = {};     // 掃描中看過的所有圖說編號（找出「有圖說但抽不到」的向量圖）
+    var entries = [];     // { blob, w, h, page, fig, x, yTop }
+    var base = exBaseName();
+
+    try {
+      for (var pi = 0; pi < pages.length; pi++) {
+        var pageNum = pages[pi];
+        setProgress(progress, pi, pages.length, '掃描第 ' + pageNum + ' 頁');
+        var page = await exDoc.getPage(pageNum);
+        var ops = await page.getOperatorList();
+        var placements = exCollectPlacements(ops);
+        var captions = onlyFig ? await exCollectCaptions(page) : [];
+        captions.forEach(function (c) { capSeen[c.label + c.num] = c; });
+
+        for (var j = 0; j < placements.length; j++) {
+          var pl = placements[j];
+          var imgObj = null;
+          if (pl.inline) {
+            imgObj = pl.arg; // 行內圖直接帶像素資料
+          } else {
+            if (typeof pl.arg !== 'string') continue;
+            var key = pl.arg.indexOf('g_') === 0 ? pl.arg : pageNum + '/' + pl.arg;
+            if (seen[key]) continue;
+            seen[key] = true;
+            imgObj = await exGetPageObj(page, pl.arg);
+          }
+          if (!imgObj) continue;
+
+          var fig = null;
+          if (onlyFig) {
+            fig = exMatchCaption(pl, captions);
+            if (!fig) { noCapSkipped++; continue; }
+          }
+
+          var canvas = exImageToCanvas(imgObj);
+          if (!canvas) continue;
+          if (hideSmall && (canvas.width < 40 || canvas.height < 40)) {
+            canvas.width = canvas.height = 0;
+            smallSkipped++;
+            continue;
+          }
+          var blob = await toBlobPromise(canvas, 'image/png');
+          var cw = canvas.width, ch = canvas.height;
+          canvas.width = canvas.height = 0;
+          if (!blob) continue;
+          entries.push({ blob: blob, w: cw, h: ch, page: pageNum, fig: fig, x: pl.x0, yTop: pl.y1 });
+        }
+        page.cleanup();
+        await nextFrame();
+      }
+
+      // 決定檔名與順序
+      var ordered = [];
+      if (onlyFig) {
+        var groups = {};
+        entries.forEach(function (e) {
+          var k = e.fig.label + e.fig.num;
+          (groups[k] = groups[k] || []).push(e);
+        });
+        Object.keys(groups)
+          .sort(function (a, b) { return groups[a][0].fig.num - groups[b][0].fig.num; })
+          .forEach(function (k) {
+            // 同一個圖說配到多張圖（子圖）：由上到下、由左到右加 -1、-2 序號
+            var g = groups[k].sort(function (a, b) { return (b.yTop - a.yTop) || (a.x - b.x); });
+            g.forEach(function (e, i) {
+              var suffix = g.length > 1 ? '-' + (i + 1) : '';
+              e.filename = base + '_' + e.fig.label + e.fig.num + suffix + '.png';
+              e.caption = e.fig.label + ' ' + e.fig.num +
+                (g.length > 1 ? '（' + (i + 1) + '/' + g.length + '）' : '') +
+                ' · 第 ' + e.page + ' 頁 · ' + e.w + '×' + e.h;
+              ordered.push(e);
+            });
+          });
+      } else {
+        entries.forEach(function (e, i) {
+          e.filename = base + '_第' + e.page + '頁_圖' + (i + 1) + '.png';
+          e.caption = '第 ' + e.page + ' 頁 · ' + e.w + '×' + e.h;
+          ordered.push(e);
+        });
+      }
+      ordered.forEach(function (e) {
+        exAutoOutputs.push({ blob: e.blob, filename: e.filename });
+        addImgResultTo($('exAutoResults'), e.blob, e.filename, e.caption);
+      });
+
+      // 有圖說編號、卻沒配到任何內嵌圖的 → 很可能是向量圖，誠實告知
+      var missing = [];
+      if (onlyFig) {
+        var matched = {};
+        entries.forEach(function (e) { matched[e.fig.label + e.fig.num] = true; });
+        Object.keys(capSeen).forEach(function (k) { if (!matched[k]) missing.push(k); });
+        missing.sort(function (a, b) { return capSeen[a].num - capSeen[b].num; });
+      }
+
+      setProgress(progress, pages.length, pages.length, '掃描完成');
+      var found = ordered.length;
+      if (found === 0) {
+        var msg = '掃描完成，沒有抽到圖片。';
+        if (onlyFig && Object.keys(capSeen).length === 0) {
+          msg += '沒有在文字層找到「Figure n／圖 n」圖說——若這是掃描版 PDF 或圖說格式特殊，請取消勾選「只抓論文圖」改抓全部內嵌圖。';
+        } else if (missing.length) {
+          msg += '有找到圖說（' + missing.join('、') + '）但都沒有對應的內嵌圖，這些圖應是向量圖，請改用「手動框選擷取」。';
+        } else {
+          msg += (smallSkipped ? '（有 ' + smallSkipped + ' 張小圖被忽略，可取消勾選「忽略小圖示」再試）' : '') +
+            '這份 PDF 的圖可能都是向量圖，請改用「手動框選擷取」。';
+        }
+        showStatus(status, 'info', msg);
+      } else {
+        var totalSize = exAutoOutputs.reduce(function (s, o) { return s + o.blob.size; }, 0);
+        var msg2 = '✅ 共抽出 ' + found + ' 張圖片（原始解析度、總計 ' + formatSize(totalSize) + '）';
+        if (onlyFig && noCapSkipped) msg2 += '，另略過 ' + noCapSkipped + ' 張沒有圖說的內嵌圖';
+        if (smallSkipped) msg2 += '，忽略 ' + smallSkipped + ' 張小圖示';
+        msg2 += '。';
+        if (missing.length) {
+          msg2 += '⚠️ ' + missing.join('、') + ' 有圖說但沒有內嵌圖（應為向量圖），請用「手動框選擷取」補抓。';
+        }
+        showStatus(status, missing.length ? 'info' : 'success', msg2);
+        if (exAutoOutputs.length > 1) $('exAutoZipBtn').style.display = 'block';
+      }
+    } catch (err) {
+      showStatus(status, 'error', '掃描失敗：' + err.message);
+    } finally {
+      hideProgress(progress);
+      btn.disabled = false;
+    }
+  });
+
+  $('exAutoZipBtn').addEventListener('click', function () {
+    exZipDownload(exAutoOutputs, $('exAutoZipBtn'), $('exAutoStatus'), exBaseName() + '_抽取圖片.zip');
+  });
+  $('exCropZipBtn').addEventListener('click', function () {
+    exZipDownload(exCropOutputs, $('exCropZipBtn'), $('exCropStatus'), exBaseName() + '_框選圖片.zip');
+  });
+
+  async function exZipDownload(outputs, btn, status, zipName) {
+    if (outputs.length === 0) return;
+    btn.disabled = true;
+    showStatus(status, 'info', '正在打包 ZIP…');
+    try {
+      var zip = new JSZip();
+      outputs.forEach(function (o) { zip.file(o.filename, o.blob); });
+      var zipBlob = await zip.generateAsync({ type: 'blob' });
+      downloadBlob(zipBlob, zipName);
+      showStatus(status, 'success', '✅ ZIP 已開始下載（' + formatSize(zipBlob.size) + '）。');
+    } catch (err) {
+      showStatus(status, 'error', '打包失敗：' + err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  /* ---------- 手動框選擷取 ---------- */
+
+  function exClearSel() {
+    exCrop.sel = null;
+    $('exSel').style.display = 'none';
+    $('exCropEstimate').textContent = '';
+  }
+
+  async function exCropRender() {
+    if (!exDoc) return;
+    var t = ++exCrop.token;
+    exClearSel();
+    var canvas = $('exCanvas');
+    try {
+      // 同一個 canvas 不能同時跑兩個 render：先取消並等前一次結束（快速翻頁時）
+      if (exCrop.renderTask) {
+        try { exCrop.renderTask.cancel(); } catch (e) {}
+        try { await exCrop.renderTask.promise; } catch (e) {}
+        if (t !== exCrop.token) return;
+      }
+      var page = await exDoc.getPage(exCrop.page);
+      if (t !== exCrop.token) return;
+      var baseVp = page.getViewport({ scale: 1 });
+      var wrapW = $('exStageWrap').clientWidth || 640;
+      var fitScale = Math.max(0.1, (wrapW - 4) / baseVp.width);
+      var cssScale = exCrop.fit ? fitScale : exCrop.zoom;
+      exCrop.cssScale = cssScale;
+      var ratio = Math.min(window.devicePixelRatio || 1, 2);
+      var vp = page.getViewport({ scale: cssScale * ratio });
+      canvas.width = Math.floor(vp.width);
+      canvas.height = Math.floor(vp.height);
+      canvas.style.width = Math.floor(vp.width / ratio) + 'px';
+      canvas.style.height = Math.floor(vp.height / ratio) + 'px';
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      var task = page.render({ canvasContext: ctx, viewport: vp });
+      exCrop.renderTask = task;
+      await task.promise;
+      exCrop.renderTask = null;
+      page.cleanup();
+      if (t !== exCrop.token) return;
+      exCrop.rendered = true;
+      $('exPageLabel').textContent = exCrop.page + ' / ' + exTotalPages;
+      $('exZoomLabel').textContent = Math.round(cssScale * 100) + '%';
+      $('exPrev').disabled = exCrop.page <= 1;
+      $('exNext').disabled = exCrop.page >= exTotalPages;
+    } catch (e) {
+      exCrop.renderTask = null;
+      if (t === exCrop.token) {
+        showStatus($('exCropStatus'), 'error', '這一頁渲染失敗，請換一頁試試。');
+      }
+    }
+  }
+
+  $('exPrev').addEventListener('click', function () {
+    if (exCrop.page > 1) { exCrop.page--; exCropRender(); }
+  });
+  $('exNext').addEventListener('click', function () {
+    if (exCrop.page < exTotalPages) { exCrop.page++; exCropRender(); }
+  });
+  $('exZoomIn').addEventListener('click', function () {
+    exCrop.zoom = Math.min(4, (exCrop.fit ? exCrop.cssScale : exCrop.zoom) * 1.25);
+    exCrop.fit = false;
+    exCropRender();
+  });
+  $('exZoomOut').addEventListener('click', function () {
+    exCrop.zoom = Math.max(0.25, (exCrop.fit ? exCrop.cssScale : exCrop.zoom) / 1.25);
+    exCrop.fit = false;
+    exCropRender();
+  });
+  $('exZoomLabel').addEventListener('click', function () {
+    exCrop.fit = true;
+    exCropRender();
+  });
+
+  // 框選（滑鼠與觸控都走 pointer events）
+  (function () {
+    var stage = $('exStage');
+    var selEl = $('exSel');
+    var start = null;
+
+    function stagePos(e) {
+      var r = $('exCanvas').getBoundingClientRect();
+      return {
+        x: Math.max(0, Math.min(e.clientX - r.left, r.width)),
+        y: Math.max(0, Math.min(e.clientY - r.top, r.height))
+      };
+    }
+
+    function updateSelBox(a, b) {
+      var x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
+      var w = Math.abs(a.x - b.x), h = Math.abs(a.y - b.y);
+      selEl.style.left = x + 'px';
+      selEl.style.top = y + 'px';
+      selEl.style.width = w + 'px';
+      selEl.style.height = h + 'px';
+      selEl.style.display = 'block';
+      return { x: x, y: y, w: w, h: h };
+    }
+
+    stage.addEventListener('pointerdown', function (e) {
+      if (!exDoc || !exCrop.rendered) return;
+      start = stagePos(e);
+      exCrop.sel = null;
+      $('exCropEstimate').textContent = '';
+      updateSelBox(start, start);
+      try { stage.setPointerCapture(e.pointerId); } catch (err) { /* 沒有作用中的 pointer 時略過 */ }
+      e.preventDefault();
+    });
+    stage.addEventListener('pointermove', function (e) {
+      if (!start) return;
+      updateSelBox(start, stagePos(e));
+    });
+    stage.addEventListener('pointerup', function (e) {
+      if (!start) return;
+      var sel = updateSelBox(start, stagePos(e));
+      start = null;
+      if (sel.w < 8 || sel.h < 8) { exClearSel(); return; } // 太小視為誤觸
+      exCrop.sel = sel;
+      exUpdateCropEstimate();
+    });
+    stage.addEventListener('pointercancel', function () {
+      start = null;
+      exClearSel();
+    });
+  })();
+
+  function exUpdateCropEstimate() {
+    var el = $('exCropEstimate');
+    if (!exCrop.sel) { el.textContent = ''; return; }
+    var dpi = parseInt($('exDpi').value, 10);
+    var scale = dpi / 72 / exCrop.cssScale;
+    var w = Math.round(exCrop.sel.w * scale);
+    var h = Math.round(exCrop.sel.h * scale);
+    el.textContent = '✂️ 已框選範圍，輸出約 ' + w + '×' + h + ' 像素（' + dpi + ' DPI）';
+  }
+  $('exDpi').addEventListener('change', exUpdateCropEstimate);
+
+  $('exCropBtn').addEventListener('click', async function () {
+    var status = $('exCropStatus');
+    hideStatus(status);
+    if (!exDoc) {
+      showStatus(status, 'error', '請先選擇一個 PDF 檔案。');
+      return;
+    }
+    if (!exCrop.sel) {
+      showStatus(status, 'error', '請先在頁面上按住拖曳，框出要擷取的範圍。');
+      return;
+    }
+    var btn = $('exCropBtn');
+    btn.disabled = true;
+    try {
+      var dpi = parseInt($('exDpi').value, 10);
+      // 換回 PDF 座標（viewport scale=1 的單位）
+      var s = exCrop.sel;
+      var px = s.x / exCrop.cssScale;
+      var py = s.y / exCrop.cssScale;
+      var pw = s.w / exCrop.cssScale;
+      var ph = s.h / exCrop.cssScale;
+      var scale = dpi / 72;
+      // 輸出尺寸上限保護：超過就自動降 DPI
+      var maxDim = IS_MOBILE ? 3000 : 8000;
+      var cap = maxDim / Math.max(pw * scale, ph * scale);
+      if (cap < 1) scale *= cap;
+
+      var page = await exDoc.getPage(exCrop.page);
+      var vp = page.getViewport({ scale: scale });
+      var canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(pw * scale));
+      canvas.height = Math.max(1, Math.round(ph * scale));
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // transform 先於 viewport 矩陣套用：把框選區平移到畫布原點，只渲染需要的範圍
+      await page.render({
+        canvasContext: ctx,
+        viewport: vp,
+        transform: [1, 0, 0, 1, -px * scale, -py * scale]
+      }).promise;
+      page.cleanup();
+      var blob = await toBlobPromise(canvas, 'image/png');
+      var cw = canvas.width, ch = canvas.height;
+      canvas.width = canvas.height = 0;
+      if (!blob) throw new Error('輸出失敗，可能是記憶體不足，請降低解析度');
+
+      exCropCount++;
+      var filename = exBaseName() + '_第' + exCrop.page + '頁_框選' + exCropCount + '.png';
+      exCropOutputs.push({ blob: blob, filename: filename });
+      addImgResultTo($('exCropResults'), blob, filename, '第 ' + exCrop.page + ' 頁 · ' + cw + '×' + ch);
+      showStatus(status, 'success', '✅ 已擷取（' + cw + '×' + ch + ' 像素、' + formatSize(blob.size) +
+        '），可繼續框選下一張。');
+      if (exCropOutputs.length > 1) $('exCropZipBtn').style.display = 'block';
+    } catch (err) {
+      showStatus(status, 'error', '擷取失敗：' + err.message);
     } finally {
       btn.disabled = false;
     }
