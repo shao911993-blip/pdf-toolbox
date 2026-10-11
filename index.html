@@ -852,9 +852,14 @@
       <input type="file" id="fillInput" accept=".pdf,application/pdf">
       <div id="fillInfo" style="display:none">
         <span class="badge" id="fillBadge"></span>
-        <p class="hint">點下方頁面任意位置新增文字框並直接打字；點選文字框後可用 ✥ 拖曳移動、✕ 刪除，拖右側的 ↔ 把手可調整寬度讓文字自動換行（雙擊把手恢復自動寬度），字級、顏色、對齊會套用到選取中的文字框。可用 − / ＋ 縮放頁面，或按 ⛶ 進入全螢幕編輯。輸出字型為思源黑體（Noto Sans TC）。</p>
+        <p class="hint">點下方頁面任意位置新增文字框並直接打字；點選文字框後可用 ✥ 拖曳移動、✕ 刪除，拖右側的 ↔ 把手可調整寬度讓文字自動換行（雙擊把手恢復自動寬度），字型、字級、顏色、對齊會套用到選取中的文字框。可用 − / ＋ 縮放頁面，或按 ⛶ 進入全螢幕編輯。字型可選黑體（思源黑體）、明體（思源宋體）、楷體（霞鶩文楷），第一次選用某個字型時需下載約 7～10 MB。</p>
         <div id="fillEditor">
           <div class="fill-toolbar">
+            <select id="fillFont" title="字型">
+              <option value="sans" selected>黑體</option>
+              <option value="serif">明體</option>
+              <option value="kai">楷體</option>
+            </select>
             <select id="fillSize" title="字級">
               <option value="9">9 pt</option>
               <option value="10">10 pt</option>
@@ -2703,8 +2708,19 @@
 
   /* ================= 功能 F：填寫文字 ================= */
 
-  // 中文字型（思源黑體可變字型，只在匯出時需要完整位元組）
-  var FILL_FONT_URL = 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosanstc/NotoSansTC%5Bwght%5D.ttf';
+  // 中文字型（皆為 SIL OFL 授權，從 Google Fonts 官方 repo 經 jsDelivr 載入，選到才下載）
+  // mb：實際傳輸量（CDN 壓縮後）；variable：可變字型要釘在 Regular 字重；fallback：字型還沒下載完時的替代字型
+  var FILL_FONTS = {
+    sans:  { label: '黑體（思源黑體）', family: 'FillNotoTC', mb: 7, variable: true,
+             url: 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosanstc/NotoSansTC%5Bwght%5D.ttf',
+             fallback: '"Microsoft JhengHei", "PingFang TC", sans-serif' },
+    serif: { label: '明體（思源宋體）', family: 'FillNotoSerifTC', mb: 10, variable: true,
+             url: 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notoseriftc/NotoSerifTC%5Bwght%5D.ttf',
+             fallback: '"PMingLiU", "Songti TC", serif' },
+    kai:   { label: '楷體（霞鶩文楷）', family: 'FillWenKaiTC', mb: 7, variable: false,
+             url: 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/lxgwwenkaitc/LXGWWenKaiTC-Regular.ttf',
+             fallback: '"DFKai-SB", "BiauKai", "Kaiti TC", serif' }
+  };
   // HarfBuzz 字型子集化引擎（fontkit 的子集化對 CJK 字型有 bug，改用 HarfBuzz）
   var FILL_HB_URL = 'https://cdn.jsdelivr.net/npm/harfbuzzjs@1.4.0/dist/harfbuzz-subset.wasm';
   var FILL_LINE_HEIGHT = 1.2; // 預覽 CSS 與輸出 PDF 使用同一行高
@@ -2721,34 +2737,49 @@
   var fillScale = 1;       // 畫面 px ÷ PDF pt（以 scale-1 viewport 為準）
   var fillVpW = 0;         // 目前頁面在 scale-1 viewport 的尺寸（pt）
   var fillVpH = 0;
-  var fillBoxes = [];      // { page, vx, vy, size, color, text, el, textEl }
+  var fillBoxes = [];      // { page, vx, vy, font, size, color, text, el, textEl }
   var fillActive = null;
   var fillRenderToken = 0;
   var fillZoom = 1;        // 使用者縮放倍率（1 = 適合寬度）
 
-  // 背景下載字型（只下載一次），同時註冊給預覽用讓畫面與輸出一致
-  var fillFontPromise = null;
-  function fillFetchFont() {
-    if (!fillFontPromise) {
-      fillFontPromise = fetch(FILL_FONT_URL).then(function (r) {
-        if (!r.ok) throw new Error('中文字型下載失敗（HTTP ' + r.status + '），請檢查網路後再試。');
+  // 背景下載字型（每種只下載一次），同時註冊給預覽用讓畫面與輸出一致
+  var fillFontPromises = {};
+  function fillFetchFont(key) {
+    var info = FILL_FONTS[key];
+    if (!fillFontPromises[key]) {
+      fillFontPromises[key] = fetch(info.url).then(function (r) {
+        if (!r.ok) throw new Error(info.label + '下載失敗（HTTP ' + r.status + '），請檢查網路後再試。');
         return r.arrayBuffer();
       }).then(function (buf) {
         var bytes = new Uint8Array(buf);
         // 預覽字型註冊完成後才算載入完成，避免匯出擷取斷行時字型還在半路上換掉
         try {
-          var ff = new FontFace('FillNotoTC', buf.slice(0));
+          var ff = new FontFace(info.family, buf.slice(0));
           return ff.load().then(function (loaded) {
             document.fonts.add(loaded);
             return bytes;
           }).catch(function () { return bytes; }); // 註冊失敗不影響輸出
         } catch (e) { return bytes; }
       }).catch(function (e) {
-        fillFontPromise = null; // 允許之後重試
+        delete fillFontPromises[key]; // 允許之後重試
         throw e;
       });
     }
-    return fillFontPromise;
+    return fillFontPromises[key];
+  }
+
+  // 選到還沒下載的字型時先在背景下載，並告訴使用者在下載什麼、多大
+  function fillPreloadFont(key) {
+    if (fillFontPromises[key]) return;
+    var status = $('fillStatus');
+    var msg = '正在下載' + FILL_FONTS[key].label + '（約 ' + FILL_FONTS[key].mb +
+      ' MB，只需下載一次）；下載完成前畫面會先用相近的字型顯示。';
+    showStatus(status, 'info', msg);
+    fillFetchFont(key).then(function () {
+      if (status.textContent === msg) hideStatus(status);
+    }, function (e) {
+      if (status.textContent === msg) showStatus(status, 'error', e.message);
+    });
   }
 
   var fillHbPromise = null;
@@ -2774,7 +2805,7 @@
   }
 
   // 用 HarfBuzz 把字型裁剪成只含用到的字，可變字型並釘在 Regular 字重
-  function fillSubsetFont(hb, fontBytes, text) {
+  function fillSubsetFont(hb, fontBytes, text, variable) {
     var input = hb.hb_subset_input_create_or_fail();
     if (!input) throw new Error('子集化引擎初始化失敗');
     var fontPtr = hb.malloc(fontBytes.byteLength);
@@ -2796,7 +2827,7 @@
       i += cp > 0xFFFF ? 2 : 1;
     }
 
-    hb.hb_subset_input_pin_axis_location(input, face, hbTag('wght'), 400);
+    if (variable) hb.hb_subset_input_pin_axis_location(input, face, hbTag('wght'), 400);
 
     var subset;
     try {
@@ -2878,6 +2909,8 @@
     b.textEl.style.width = b.w ? (b.w * fillScale) + 'px' : '';
     b.textEl.style.textAlign = b.align;
     b.textEl.style.color = FILL_COLORS[b.color].css;
+    var f = FILL_FONTS[b.font];
+    b.textEl.style.fontFamily = '"' + f.family + '", ' + f.fallback;
   }
 
   function fillLayoutBoxes() {
@@ -2889,6 +2922,7 @@
     fillDeselect();
     fillActive = b;
     b.el.classList.add('sel');
+    $('fillFont').value = b.font;
     $('fillSize').value = String(b.size);
     $('fillColor').value = b.color;
     $('fillAlign').value = b.align;
@@ -2934,6 +2968,7 @@
       page: fillCur,
       vx: vx,
       vy: vy,
+      font: $('fillFont').value,
       size: parseInt($('fillSize').value, 10),
       color: $('fillColor').value,
       align: $('fillAlign').value,
@@ -3146,7 +3181,7 @@
       hideStatus(status);
       await fillRenderPage();
       // 先在背景下載字型，匯出時就不用等
-      fillFetchFont().catch(function () { /* 匯出時會再試並顯示錯誤 */ });
+      fillFetchFont($('fillFont').value).catch(function () { /* 匯出時會再試並顯示錯誤 */ });
       return true;
     } catch (e) {
       fillClearAll();
@@ -3184,6 +3219,13 @@
     b.textEl.focus();
   });
 
+  $('fillFont').addEventListener('change', function () {
+    fillPreloadFont(this.value);
+    if (fillActive) {
+      fillActive.font = this.value;
+      fillLayoutBox(fillActive);
+    }
+  });
   $('fillSize').addEventListener('change', function () {
     if (fillActive) {
       fillActive.size = parseInt(this.value, 10);
@@ -3250,41 +3292,49 @@
   // 把文字框寫進 PDF，回傳新 PDF 的位元組（進度顯示在 status）
   async function fillBuildPdf(boxes, status) {
     if (!window.fontkit) throw new Error('字型元件載入失敗，請檢查網路後重新整理頁面。');
-    showStatus(status, 'info', '正在下載中文字型與子集化引擎（約 7 MB，只需下載一次，之後由瀏覽器快取）…');
-    var loaded = await Promise.all([fillFetchFont(), fillLoadHb()]);
-    var fontBytes = loaded[0];
-    var hb = loaded[1];
+    // 用到哪幾種字型，就只下載、嵌入那幾種
+    var keys = [];
+    boxes.forEach(function (b) { if (keys.indexOf(b.font) === -1) keys.push(b.font); });
+    var mb = keys.reduce(function (s, k) { return s + FILL_FONTS[k].mb; }, 0);
+    showStatus(status, 'info', '正在下載中文字型與子集化引擎（約 ' + mb + ' MB，只需下載一次，之後由瀏覽器快取）…');
+    var loaded = await Promise.all([fillLoadHb()].concat(keys.map(fillFetchFont)));
+    var hb = loaded[0];
     // 等預覽字型套用、版面重排安定，斷行擷取才會與最終畫面一致
     try { await document.fonts.ready; } catch (e) { /* 不支援就略過 */ }
     await nextFrame();
 
     showStatus(status, 'info', '正在裁剪字型（只保留用到的字）…');
     await nextFrame();
-    var usedText = boxes.map(function (b) { return b.text; }).join('');
-    var subsetBytes = fillSubsetFont(hb, fontBytes, usedText);
-
-    showStatus(status, 'info', '正在寫入 PDF…');
-    await nextFrame();
     var buf = await fillFile.arrayBuffer();
     var src = await PDFLib.PDFDocument.load(buf, { ignoreEncryption: true });
     src.registerFontkit(window.fontkit);
-    var font = await src.embedFont(subsetBytes, { subset: false });
+    var fonts = {}; // key → { font, baseFactor }
+    for (var k = 0; k < keys.length; k++) {
+      var key = keys[k];
+      var usedText = boxes.filter(function (b) { return b.font === key; })
+        .map(function (b) { return b.text; }).join('');
+      var subsetBytes = fillSubsetFont(hb, loaded[k + 1], usedText, FILL_FONTS[key].variable);
+      var embedded = await src.embedFont(subsetBytes, { subset: false });
+      // 第一行 baseline 距文字框頂端 = 半行距 + 上緣高度（與 CSS line-height 對齊）
+      var asc = 0.88, desc = 0.12;
+      try {
+        var fk = embedded.embedder.font;
+        var os2 = fk['OS/2'];
+        if (os2 && os2.typoAscender) {
+          asc = os2.typoAscender / fk.unitsPerEm;
+          desc = Math.abs(os2.typoDescender) / fk.unitsPerEm;
+        }
+      } catch (e) { /* 用預設值 */ }
+      fonts[key] = { font: embedded, baseFactor: asc + Math.max(0, (FILL_LINE_HEIGHT - (asc + desc)) / 2) };
+    }
 
-    // 第一行 baseline 距文字框頂端 = 半行距 + 上緣高度（與 CSS line-height 對齊）
-    var asc = 0.88, desc = 0.12;
-    try {
-      var fk = font.embedder.font;
-      var os2 = fk['OS/2'];
-      if (os2 && os2.typoAscender) {
-        asc = os2.typoAscender / fk.unitsPerEm;
-        desc = Math.abs(os2.typoDescender) / fk.unitsPerEm;
-      }
-    } catch (e) { /* 用預設值 */ }
-    var baseFactor = asc + Math.max(0, (FILL_LINE_HEIGHT - (asc + desc)) / 2);
-
+    showStatus(status, 'info', '正在寫入 PDF…');
+    await nextFrame();
     var pdfPages = src.getPages();
     for (var i = 0; i < boxes.length; i++) {
       var b = boxes[i];
+      var font = fonts[b.font].font;
+      var baseFactor = fonts[b.font].baseFactor;
       var jsPage = await fillDoc.getPage(b.page);
       var vp1 = jsPage.getViewport({ scale: 1 });
       var rot = (((jsPage.rotate || 0) % 360) + 360) % 360;

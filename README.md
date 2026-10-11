@@ -10,7 +10,7 @@
 |---|---|
 | 📑 PDF 合併 | 多檔上傳、拖曳排序、合併下載 |
 | 🗂️ 頁面整理 | 拖曳縮圖重新排序（可多頁整批移動，手機長按拖曳），旋轉、複製、刪除頁面並可復原；縮圖點選或輸入頁碼（如 `1,3,5-8`）選取，可匯出整份或只匯出選取的頁面（拆分）；可與「填寫文字」互相接續，不必下載再重新上傳 |
-| ✍️ 填寫文字 | 點頁面任意位置加入文字（填表格、加註記），支援中文，可調字級、顏色、對齊，可拖拉框寬自動換行，含縮放與全螢幕編輯 |
+| ✍️ 填寫文字 | 點頁面任意位置加入文字（填表格、加註記），支援中文，可選黑體／明體／楷體，可調字級、顏色、對齊，可拖拉框寬自動換行，含縮放與全螢幕編輯 |
 | 🖼️ PDF 轉圖片 | PNG／JPG／WebP，96–300 DPI，可逐張或 ZIP 打包下載 |
 | 🧲 抓取圖片 | 把 PDF 內嵌的圖片（Figure）以原始解析度無損抽出，可依「Figure n／圖 n」圖說自動配對、只抓論文圖並以編號命名；向量圖表可用手動框選以 150–600 DPI 擷取 |
 | 📷 圖片轉 PDF | JPG／PNG／HEIC，A4 或原始尺寸，自動置中縮放 |
@@ -20,7 +20,7 @@
 
 ## 使用方式
 
-不需要安裝、不需要建置。下載 `index.html` 用瀏覽器開啟即可，或直接使用上方的線上網址。第一次開啟需要網路載入 CDN 套件；深度壓縮功能第一次使用需下載約 16 MB 的引擎、填寫文字功能第一次匯出需下載約 7 MB 的中文字型（之後由瀏覽器快取）。
+不需要安裝、不需要建置。下載 `index.html` 用瀏覽器開啟即可，或直接使用上方的線上網址。第一次開啟需要網路載入 CDN 套件；深度壓縮功能第一次使用需下載約 16 MB 的引擎、填寫文字功能每種中文字型第一次使用時需下載約 7～10 MB（之後由瀏覽器快取）。
 
 ## 隱私
 
@@ -48,7 +48,9 @@ Copyright (C) 2026 shao911993-blip
 | [heic2any](https://github.com/alexcorvi/heic2any) | HEIC 圖片轉換 | MIT（內含 [libheif](https://github.com/strukturag/libheif)，LGPL-3.0） |
 | [@pdf-lib/fontkit](https://github.com/Hopding/fontkit) | 自訂字型嵌入 | MIT |
 | [HarfBuzz（WASM）](https://github.com/harfbuzz/harfbuzzjs) | 字型子集化（填寫文字） | MIT（Old MIT） |
-| [Noto Sans TC](https://fonts.google.com/noto/specimen/Noto+Sans+TC) | 填寫文字的中文字型 | SIL OFL 1.1 |
+| [Noto Sans TC](https://fonts.google.com/noto/specimen/Noto+Sans+TC) | 填寫文字的中文字型（黑體） | SIL OFL 1.1 |
+| [Noto Serif TC](https://fonts.google.com/noto/specimen/Noto+Serif+TC) | 填寫文字的中文字型（明體） | SIL OFL 1.1 |
+| [LXGW WenKai TC（霞鶩文楷）](https://fonts.google.com/specimen/LXGW+WenKai+TC) | 填寫文字的中文字型（楷體） | SIL OFL 1.1 |
 | [Ghostscript（WASM）](https://github.com/jsscheller/ghostscript-wasm) | 深度壓縮／高保真渲染 | **AGPL-3.0** |
 
 ⚠️ **商業使用注意**：AGPL-3.0 不禁止商業使用，但要求遵守開源義務。若要將包含 Ghostscript 的版本用於閉源產品，或無法遵守 AGPL-3.0 開源義務的商業情境，請向 [Artifex](https://artifex.com/licensing/) 確認 Ghostscript 商業授權。
