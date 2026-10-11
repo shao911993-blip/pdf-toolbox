@@ -43,7 +43,7 @@
   /* 分頁 */
   .tabs {
     display: grid;
-    grid-template-columns: repeat(8, 1fr);
+    grid-template-columns: repeat(7, 1fr);
     gap: 5px;
     margin-bottom: 12px;
   }
@@ -301,7 +301,7 @@
     position: fixed;
     inset: 0;
     background: rgba(15, 23, 42, .88);
-    z-index: 100;
+    z-index: 130; /* 要蓋過全螢幕編輯器（120） */
     display: none;
     flex-direction: column;
   }
@@ -575,6 +575,173 @@
     display: none;
   }
 
+  /* PDF 壓縮：目標大小 */
+  .target-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .target-row .mini-btn { width: auto; padding: 0 12px; font-size: 13px; }
+  .target-row .mini-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .target-custom { font-size: 13px; color: var(--text-light); white-space: nowrap; }
+  .target-custom input {
+    width: 80px;
+    padding: 6px 8px;
+    margin: 0 2px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    color: var(--text);
+  }
+  .target-custom input:focus { outline: 2px solid var(--primary); border-color: var(--primary); }
+
+  /* 頁面整理 */
+  .org-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fafafa;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  .org-toolbar .mini-btn { width: auto; padding: 0 10px; font-size: 13px; }
+  .org-toolbar .mini-btn.org-zoom { width: 32px; padding: 0; font-size: 16px; }
+  .org-sel-label { font-size: 13px; color: var(--text-light); margin-left: auto; white-space: nowrap; }
+  .org-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--org-size, 110px), 1fr));
+    gap: 10px;
+    margin-top: 12px;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .org-card { cursor: grab; }
+  .org-card .org-img {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8fafc;
+    overflow: hidden;
+  }
+  /* 縮圖最長邊不超過方框，旋轉 90° 後依然放得下 */
+  .org-card .org-img img {
+    width: auto;
+    max-width: 92%;
+    max-height: 92%;
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    transition: transform .2s;
+    pointer-events: none;
+  }
+  .org-card .org-img .ph { font-size: 12px; color: var(--text-light); }
+  .org-card .pnum .src { opacity: .75; }
+  .org-card.dragging { opacity: .3; }
+  .org-ghost {
+    position: fixed;
+    z-index: 200;
+    width: 80px;
+    pointer-events: none;
+    border: 2px solid var(--primary);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 6px 20px rgba(0,0,0,.3);
+    overflow: hidden;
+    transform: translate(-50%, -60%) rotate(-3deg);
+  }
+  .org-ghost img { width: 100%; display: block; }
+  .org-ghost .cnt {
+    position: absolute;
+    top: 4px; right: 4px;
+    min-width: 22px; height: 22px;
+    padding: 0 5px;
+    border-radius: 11px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .org-marker {
+    position: absolute;
+    width: 4px;
+    border-radius: 2px;
+    background: var(--primary);
+    pointer-events: none;
+    display: none;
+  }
+  #orgEditor.fs {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+  }
+  #orgEditor.fs .org-toolbar {
+    position: static;
+    margin: 0 0 8px;
+    background: var(--card);
+  }
+  .org-view { display: none; }
+  .org-check { display: none; }
+  /* 全螢幕：左側一欄縮圖，右側連續頁面 */
+  #orgEditor.fs .org-body { flex: 1; min-height: 0; display: flex; gap: 8px; }
+  #orgEditor.fs .org-grid-wrap {
+    flex: 0 0 auto;
+    width: 170px;
+    overflow-y: auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+  }
+  #orgEditor.fs .org-grid { margin-top: 0; grid-template-columns: 1fr; }
+  #orgEditor.fs .thumb-zoom { display: none; }
+  #orgEditor.fs .org-card.selected::after { display: none; }
+  #orgEditor.fs .org-card.current { box-shadow: 0 0 0 3px #93c5fd; }
+  #orgEditor.fs .org-card.current .pnum { font-weight: 700; color: var(--text); }
+  #orgEditor.fs .org-card.selected.current .pnum { color: #fff; }
+  #orgEditor.fs .org-check {
+    display: flex;
+    position: absolute;
+    top: 4px; right: 4px;
+    width: 24px; height: 24px;
+    border: 2px solid #94a3b8;
+    border-radius: 50%;
+    background: rgba(255,255,255,.92);
+    color: #fff;
+    font-size: 13px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  #orgEditor.fs .org-card.selected .org-check { background: var(--primary); border-color: var(--primary); }
+  #orgEditor.fs .org-view {
+    display: block;
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    overflow: auto;
+    background: #cbd5e1;
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .org-vpage { margin: 0 auto 16px; width: fit-content; }
+  .org-vsheet { position: relative; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+  .org-vsheet canvas { display: block; width: 100%; height: 100%; }
+  .org-vcap { font-size: 12px; color: #475569; text-align: center; margin-top: 4px; }
+  @media (max-width: 600px) {
+    #orgEditor.fs .org-grid-wrap { width: 96px; padding: 6px; }
+    #orgEditor.fs .org-view { padding: 8px; }
+  }
+
   @media (max-width: 600px) {
     .tabs { grid-template-columns: repeat(4, 1fr); }
   }
@@ -597,7 +764,7 @@
   <!-- 分頁按鈕 -->
   <div class="tabs">
     <button class="tab-btn active" data-tab="merge"><span class="icon">📑</span>PDF 合併</button>
-    <button class="tab-btn" data-tab="split"><span class="icon">✂️</span>刪頁/拆分</button>
+    <button class="tab-btn" data-tab="organize"><span class="icon">🗂️</span>頁面整理</button>
     <button class="tab-btn" data-tab="fill"><span class="icon">✍️</span>填寫文字</button>
     <button class="tab-btn" data-tab="toimg"><span class="icon">🖼️</span>PDF 轉圖片</button>
     <button class="tab-btn" data-tab="extract"><span class="icon">🧲</span>抓取圖片</button>
@@ -625,26 +792,52 @@
     </div>
   </div>
 
-  <!-- ===== 功能 B：刪頁 / 拆分 ===== -->
-  <div class="panel" id="panel-split">
+  <!-- ===== 功能 B：頁面整理（排序／旋轉／複製／刪頁／拆分） ===== -->
+  <div class="panel" id="panel-organize">
     <div class="card">
-      <h2>PDF 刪頁 / 拆分</h2>
-      <p class="desc">上傳一個 PDF，輸入要保留的頁碼，匯出成新的 PDF。</p>
-      <div class="drop-zone" id="splitDrop">
+      <h2>頁面整理</h2>
+      <p class="desc">拖曳縮圖重新排序，選取頁面後可旋轉、複製或刪除；可匯出整份，或只匯出選取的頁面（拆分）。</p>
+      <div class="drop-zone" id="orgDrop">
         <span class="big">📂</span>點擊選擇或拖曳一個 PDF 檔案到這裡
       </div>
-      <input type="file" id="splitInput" accept=".pdf,application/pdf">
-      <div id="splitInfo" style="display:none">
-        <span class="badge" id="splitBadge"></span>
-        <label class="field-label" for="splitPages">要保留的頁碼</label>
-        <input type="text" id="splitPages" inputmode="numeric" placeholder="例如：1,3,5-8">
-        <p class="hint">用逗號分隔頁碼，可用「-」表示範圍。也可以直接點下方的頁面預覽來勾選，點縮圖左上角的 🔍 可放大檢視整頁。</p>
-        <div class="thumb-grid" id="splitThumbs"></div>
-        <button class="btn secondary" id="splitMore" style="display:none">載入更多頁面預覽</button>
+      <input type="file" id="orgInput" accept=".pdf,application/pdf">
+      <div id="orgInfo" style="display:none">
+        <span class="badge" id="orgBadge"></span>
+        <label class="field-label" for="orgPages">依頁碼選取</label>
+        <input type="text" id="orgPages" inputmode="numeric" placeholder="例如：1,3,5-8（依目前的排列順序）">
+        <p class="hint">點縮圖選取（Shift 可連選），按住拖曳可移動位置；選了多頁時拖其中一頁會整批移動。手機請長按約半秒再拖曳。點左上角 🔍 放大檢視，按 ⛶ 進入全螢幕編輯。<br>全螢幕時：左側點縮圖跳到該頁，點縮圖右上角的圓圈（或 Ctrl＋點）選取；沒有選取時，旋轉／複製／刪除會套用到目前正在看的頁面。</p>
+        <div id="orgEditor">
+          <div class="org-toolbar">
+            <button type="button" class="mini-btn" id="orgSelAll">全選</button>
+            <button type="button" class="mini-btn" id="orgSelInv">反選</button>
+            <button type="button" class="mini-btn" id="orgSelNone">取消</button>
+            <span class="fill-toolbar-sep"></span>
+            <button type="button" class="mini-btn" id="orgRotL" title="逆時針旋轉 90°">↺ 左轉</button>
+            <button type="button" class="mini-btn" id="orgRotR" title="順時針旋轉 90°">↻ 右轉</button>
+            <button type="button" class="mini-btn" id="orgDup" title="在原頁後面插入一份複本">⧉ 複製</button>
+            <button type="button" class="mini-btn del" id="orgDel" title="刪除選取的頁面（Delete）">🗑 刪除</button>
+            <span class="fill-toolbar-sep"></span>
+            <button type="button" class="mini-btn" id="orgUndo" title="復原（Ctrl+Z）">↶ 復原</button>
+            <span class="fill-toolbar-sep"></span>
+            <button type="button" class="mini-btn org-zoom" id="orgZoomOut" title="縮小">−</button>
+            <button type="button" class="mini-btn fill-zoom-label" id="orgZoomLabel" title="點一下恢復整頁大小" style="display:none">100%</button>
+            <button type="button" class="mini-btn org-zoom" id="orgZoomIn" title="放大">＋</button>
+            <span class="org-sel-label" id="orgSelLabel"></span>
+            <button type="button" class="mini-btn" id="orgFs">⛶ 全螢幕</button>
+          </div>
+          <div class="org-body">
+            <div class="org-grid-wrap" id="orgGridWrap">
+              <div class="org-grid" id="orgGrid"><div class="org-marker" id="orgMarker"></div></div>
+            </div>
+            <div class="org-view" id="orgView"></div>
+          </div>
+        </div>
       </div>
-      <div class="estimate" id="splitEstimate"></div>
-      <button class="btn" id="splitBtn">匯出新 PDF</button>
-      <div class="status" id="splitStatus"></div>
+      <div class="estimate" id="orgEstimate"></div>
+      <button class="btn" id="orgBtn">匯出整份 PDF</button>
+      <button class="btn secondary" id="orgSelBtn">只匯出選取的頁面（拆分）</button>
+      <button class="btn secondary" id="orgToFill">➜ 接著去「填寫文字」（帶入目前的排序與旋轉）</button>
+      <div class="status" id="orgStatus"></div>
     </div>
   </div>
 
@@ -701,6 +894,7 @@
       </div>
       <div class="estimate" id="fillEstimate"></div>
       <button class="btn" id="fillBtn">匯出已填寫的 PDF</button>
+      <button class="btn secondary" id="fillToOrg">➜ 接著去「頁面整理」（帶入已填的文字）</button>
       <div class="progress-wrap" id="fillProgress">
         <div class="progress-bar"><div></div></div>
         <div class="progress-text"></div>
@@ -903,10 +1097,21 @@
           <div>
             <label class="field-label" for="compressLevel">壓縮強度</label>
             <select id="compressLevel">
+              <option value="target">🎯 指定目標大小（不超過上限、畫質最好）</option>
               <option value="light">輕度壓縮（畫質優先）</option>
               <option value="medium" selected>中度壓縮（建議）</option>
               <option value="strong">強力壓縮（檔案最小）</option>
             </select>
+          </div>
+        </div>
+        <div id="compressTargetRow" style="display:none">
+          <label class="field-label" for="compressTarget">檔案大小上限</label>
+          <div class="target-row">
+            <button type="button" class="mini-btn" data-mb="2">2 MB</button>
+            <button type="button" class="mini-btn" data-mb="4">4 MB</button>
+            <button type="button" class="mini-btn" data-mb="5">5 MB</button>
+            <button type="button" class="mini-btn" data-mb="10">10 MB</button>
+            <span class="target-custom">自訂 <input type="number" id="compressTarget" min="0.1" step="0.1" value="4" inputmode="decimal"> MB</span>
           </div>
         </div>
         <p class="hint" id="compressHint"></p>
@@ -1376,13 +1581,14 @@
   /* ================= 分頁切換 ================= */
 
   var tabBtns = document.querySelectorAll('.tab-btn[data-tab]');
-  tabBtns.forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      tabBtns.forEach(function (b) { b.classList.remove('active'); });
-      document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
-      btn.classList.add('active');
-      $('panel-' + btn.dataset.tab).classList.add('active');
+  function showTab(name) {
+    tabBtns.forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
+    document.querySelectorAll('.panel').forEach(function (p) {
+      p.classList.toggle('active', p.id === 'panel-' + name);
     });
+  }
+  tabBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () { showTab(btn.dataset.tab); });
   });
 
   /* ================= 功能 A：PDF 合併 ================= */
@@ -1578,100 +1784,922 @@
     }
   });
 
-  /* ================= 功能 B：刪頁 / 拆分 ================= */
+  /* ================= 功能 B：頁面整理（排序／旋轉／複製／刪頁／拆分） ================= */
 
-  var splitFile = null;
-  var splitTotalPages = 0;
-  var splitSelector = makePageSelector('splitThumbs', 'splitMore', 'splitPages');
+  // pages 每一格：{ id, src（原檔頁碼，0 起算）, rot（額外旋轉 0/90/180/270） }
+  // 縮圖依 src 共用（複製出來的頁面不用重畫），card 依 id 對應 DOM
+  // 全螢幕時右側是連續頁面（viewEls 依 id 對應），current 是目前正在看的那一頁
+  var org = {
+    file: null, doc: null, total: 0,
+    pages: [], selected: {}, thumbs: {}, sizes: {}, cards: {},
+    history: [], nextId: 1, gen: 0, anchor: null,
+    current: null, curIdx: 0, viewEls: {}, vz: 1, gotoUntil: 0
+  };
+  var orgGrid = $('orgGrid');
+  var orgMarker = $('orgMarker');
+  var orgView = $('orgView');
+  var PT2PX = 96 / 72;
 
-  // 依「保留頁數 ÷ 總頁數」的比例估算輸出大小
-  function updateSplitEstimate() {
-    var el = $('splitEstimate');
-    el.textContent = '';
-    if (!splitFile) return;
-    var text = $('splitPages').value.trim();
-    if (!text) return;
-    var pages;
-    try { pages = parsePageRange(text, splitTotalPages); } catch (e) { return; }
-    var unique = pages.filter(function (p, i) { return pages.indexOf(p) === i; });
-    var est = splitFile.size * (unique.length / splitTotalPages);
-    el.textContent = '📦 保留 ' + unique.length + ' / ' + splitTotalPages +
-      ' 頁，預估輸出大小：約 ' + formatSize(est) + '（依頁數比例估計，實際大小依內容而定）';
+  function orgClear() {
+    org.gen++; // 讓進行中的渲染中止
+    orgSetFs(false);
+    if (org.doc) { org.doc.destroy(); org.doc = null; }
+    org.file = null;
+    org.total = 0;
+    org.pages = [];
+    org.selected = {};
+    org.thumbs = {};
+    org.sizes = {};
+    org.history = [];
+    org.anchor = null;
+    orgRender();
   }
-  $('splitPages').addEventListener('input', updateSplitEstimate);
 
-  setupDropZone($('splitDrop'), $('splitInput'), async function (files) {
-    var status = $('splitStatus');
+  function orgSelectedIds() {
+    return org.pages.filter(function (p) { return org.selected[p.id]; })
+      .map(function (p) { return p.id; });
+  }
+
+  // 工具列動作的對象：有選取就是選取的頁；全螢幕沒選取時是目前正在看的頁
+  function orgTargetIds() {
+    var ids = orgSelectedIds();
+    if (!ids.length && orgIsFs() && org.current !== null && orgIndexOf(org.current) !== -1) ids = [org.current];
+    return ids;
+  }
+
+  function orgSnapshot() {
+    org.history.push({
+      pages: org.pages.map(function (p) { return { id: p.id, src: p.src, rot: p.rot }; }),
+      selected: Object.assign({}, org.selected)
+    });
+    if (org.history.length > 50) org.history.shift();
+  }
+
+  function orgMakeCard(pg, pos) {
+    var div = document.createElement('div');
+    div.className = 'thumb-item org-card';
+    div.dataset.id = pg.id;
+    var box = document.createElement('div');
+    box.className = 'org-img';
+    var url = org.thumbs[pg.src];
+    if (url) {
+      var img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      img.style.transform = pg.rot ? 'rotate(' + pg.rot + 'deg)' : '';
+      box.appendChild(img);
+    } else {
+      var ph = document.createElement('span');
+      ph.className = 'ph';
+      ph.textContent = '載入中…';
+      box.appendChild(ph);
+    }
+    div.appendChild(box);
+    var cap = document.createElement('div');
+    cap.className = 'pnum';
+    cap.textContent = '第 ' + (pos + 1) + ' 頁';
+    if (pg.src !== pos) {
+      var srcEl = document.createElement('span');
+      srcEl.className = 'src';
+      srcEl.textContent = '（原 ' + (pg.src + 1) + '）';
+      cap.appendChild(srcEl);
+    }
+    div.appendChild(cap);
+    var zoom = document.createElement('button');
+    zoom.type = 'button';
+    zoom.className = 'thumb-zoom';
+    zoom.textContent = '🔍';
+    zoom.title = '放大檢視整頁';
+    div.appendChild(zoom);
+    var check = document.createElement('span');
+    check.className = 'org-check';
+    check.title = '選取／取消選取';
+    check.textContent = '✓';
+    div.appendChild(check);
+    if (org.selected[pg.id]) div.classList.add('selected');
+    if (pg.id === org.current) div.classList.add('current');
+    return div;
+  }
+
+  // 依 org.pages 重建整個縮圖格（保留插入標記元素），全螢幕時連右側頁面一起重建
+  function orgRender() {
+    Object.keys(org.cards).forEach(function (id) { org.cards[id].remove(); });
+    org.cards = {};
+    var frag = document.createDocumentFragment();
+    org.pages.forEach(function (pg, i) {
+      var c = orgMakeCard(pg, i);
+      org.cards[pg.id] = c;
+      frag.appendChild(c);
+    });
+    orgGrid.appendChild(frag);
+    orgViewBuild();
+    orgUpdateUi();
+  }
+
+  function orgUpdateUi() {
+    var n = orgSelectedIds().length;
+    var t = orgTargetIds().length;
+    var total = org.pages.length;
+    var label = '';
+    if (total) {
+      if (n || !orgIsFs()) label = '已選 ' + n + ' / ' + total + ' 頁';
+      else if (org.current !== null) label = '目前第 ' + (orgIndexOf(org.current) + 1) + ' / ' + total + ' 頁';
+    }
+    $('orgSelLabel').textContent = label;
+    ['orgRotL', 'orgRotR', 'orgDup'].forEach(function (id) { $(id).disabled = t === 0; });
+    $('orgDel').disabled = t === 0 || t === total; // 至少要留一頁
+    $('orgSelNone').disabled = n === 0;
+    $('orgUndo').disabled = org.history.length === 0;
+    $('orgSelBtn').disabled = n === 0 && !!org.file;
+    // 頁碼輸入框跟著勾選狀態走（使用者正在輸入時不覆寫）
+    var input = $('orgPages');
+    if (document.activeElement !== input) {
+      var nums = [];
+      org.pages.forEach(function (p, i) { if (org.selected[p.id]) nums.push(i + 1); });
+      input.value = pagesToRangeText(nums);
+    }
+    var el = $('orgEstimate');
+    if (!org.file || !total) { el.textContent = ''; return; }
+    // 複製的頁面共用原頁內容，大小只依「用到幾個不同的原頁」估算
+    var used = {};
+    org.pages.forEach(function (p) { used[p.src] = true; });
+    var est = org.file.size * (Object.keys(used).length / org.total);
+    el.textContent = '📦 目前 ' + total + ' 頁（原檔 ' + org.total + ' 頁），預估輸出大小：約 ' +
+      formatSize(est) + '（依頁數比例估計，實際大小依內容而定）';
+  }
+
+  function orgSetSelected(id, on) {
+    if (on) org.selected[id] = true; else delete org.selected[id];
+    var c = org.cards[id];
+    if (c) c.classList.toggle('selected', !!on);
+  }
+
+  function orgIndexOf(id) {
+    for (var i = 0; i < org.pages.length; i++) if (org.pages[i].id === id) return i;
+    return -1;
+  }
+
+  // 依原檔頁序逐頁畫縮圖，畫好就更新所有用到這一頁的格子
+  async function orgRenderThumbs(gen) {
+    for (var s = 0; s < org.total; s++) {
+      if (gen !== org.gen || !org.doc) return;
+      try {
+        var page = await org.doc.getPage(s + 1);
+        var base = page.getViewport({ scale: 1 });
+        org.sizes[s] = { w: base.width, h: base.height };
+        // 依最大縮圖尺寸畫，放大縮圖時才不會糊
+        var target = ORG_SIZES[ORG_SIZES.length - 1] * Math.min(window.devicePixelRatio || 1, 1.5);
+        var vp = page.getViewport({ scale: target / Math.max(base.width, base.height) });
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.floor(vp.width);
+        canvas.height = Math.floor(vp.height);
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        page.cleanup();
+        if (gen !== org.gen) return;
+        org.thumbs[s] = canvas.toDataURL('image/jpeg', 0.7);
+        canvas.width = canvas.height = 0;
+        org.pages.forEach(function (pg) {
+          if (pg.src !== s || !org.cards[pg.id]) return;
+          var box = org.cards[pg.id].querySelector('.org-img');
+          box.innerHTML = '';
+          var img = document.createElement('img');
+          img.src = org.thumbs[s];
+          img.alt = '';
+          img.style.transform = pg.rot ? 'rotate(' + pg.rot + 'deg)' : '';
+          box.appendChild(img);
+        });
+      } catch (e) { /* 單頁縮圖失敗不影響其他頁 */ }
+      if (s % 4 === 3) await nextFrame();
+    }
+  }
+
+  setupDropZone($('orgDrop'), $('orgInput'), function (files) { orgOpenFile(files[0]); });
+
+  // 讀入 PDF（選檔，或從「填寫文字」接續帶入），成功回傳 true
+  async function orgOpenFile(f) {
+    var status = $('orgStatus');
     hideStatus(status);
-    $('splitInfo').style.display = 'none';
-    splitFile = null;
-    splitSelector.clear();
-    $('splitEstimate').textContent = '';
+    $('orgInfo').style.display = 'none';
+    orgClear();
 
-    var f = files[0];
     if (!(await isPdfFile(f))) {
       showStatus(status, 'error', '「' + f.name + '」不是 PDF 檔案，請重新選擇。');
-      return;
+      return false;
     }
     if (!pdfjsLib) {
       showStatus(status, 'error', 'PDF 顯示元件載入失敗，請檢查網路後重新整理頁面。');
-      return;
+      return false;
     }
-    showStatus(status, 'info', '正在讀取 PDF 並產生頁面預覽…');
+    showStatus(status, 'info', '正在讀取 PDF…');
     try {
-      $('splitPages').value = '';
-      splitTotalPages = await splitSelector.load(f);
-      splitFile = f;
-      $('splitBadge').textContent = '📄 ' + f.name + ' · 共 ' + splitTotalPages + ' 頁';
-      $('splitInfo').style.display = 'block';
+      var buf = await f.arrayBuffer();
+      var gen = org.gen;
+      var doc = await pdfjsLib.getDocument({ data: buf }).promise;
+      if (gen !== org.gen) { doc.destroy(); return false; }
+      org.doc = doc;
+      org.file = f;
+      org.total = doc.numPages;
+      org.pages = [];
+      for (var i = 0; i < org.total; i++) org.pages.push({ id: org.nextId++, src: i, rot: 0 });
+      $('orgBadge').textContent = '📄 ' + f.name + ' · 共 ' + org.total + ' 頁';
+      $('orgInfo').style.display = 'block';
+      orgRender();
       hideStatus(status);
+      orgRenderThumbs(gen);
+      return true;
     } catch (e) {
       showStatus(status, 'error', '無法讀取這個 PDF，檔案可能已損毀或有密碼保護。');
+      return false;
+    }
+  }
+
+  /* ---- 選取 ---- */
+
+  var orgSuppressClick = false;
+
+  // 一般模式：點縮圖＝勾選。全螢幕：點縮圖＝跳到該頁，點右上角圓圈或 Ctrl＋點＝勾選
+  orgGrid.addEventListener('click', function (e) {
+    var card = e.target.closest('.org-card');
+    if (!card) return;
+    var id = Number(card.dataset.id);
+    if (e.target.closest('.thumb-zoom')) { orgOpenFull(orgIndexOf(id)); return; }
+    if (orgSuppressClick) return;
+    var fs = orgIsFs();
+    if (e.shiftKey && org.anchor !== null && orgIndexOf(org.anchor) !== -1) {
+      var a = orgIndexOf(org.anchor), b = orgIndexOf(id);
+      for (var i = Math.min(a, b); i <= Math.max(a, b); i++) orgSetSelected(org.pages[i].id, true);
+    } else if (!fs || e.target.closest('.org-check') || e.ctrlKey || e.metaKey) {
+      orgSetSelected(id, !org.selected[id]);
+      org.anchor = id;
+    } else {
+      org.anchor = id;
+      orgViewGoto(id);
+    }
+    orgUpdateUi();
+  });
+  // 長按（手機）不要跳出系統選單
+  orgGrid.addEventListener('contextmenu', function (e) {
+    if (e.target.closest('.org-card')) e.preventDefault();
+  });
+
+  $('orgPages').addEventListener('input', function () {
+    var text = $('orgPages').value.trim();
+    var nums = [];
+    if (text) {
+      try { nums = parsePageRange(text, org.pages.length); }
+      catch (e) { return; } // 格式還沒打完，先不動
+    }
+    var want = {};
+    nums.forEach(function (n) { want[org.pages[n - 1].id] = true; });
+    org.pages.forEach(function (p) { orgSetSelected(p.id, !!want[p.id]); });
+    orgUpdateUi();
+  });
+  $('orgPages').addEventListener('blur', orgUpdateUi);
+
+  $('orgSelAll').addEventListener('click', function () {
+    org.pages.forEach(function (p) { orgSetSelected(p.id, true); });
+    orgUpdateUi();
+  });
+  $('orgSelInv').addEventListener('click', function () {
+    org.pages.forEach(function (p) { orgSetSelected(p.id, !org.selected[p.id]); });
+    orgUpdateUi();
+  });
+  $('orgSelNone').addEventListener('click', function () {
+    org.pages.forEach(function (p) { orgSetSelected(p.id, false); });
+    orgUpdateUi();
+  });
+
+  /* ---- 旋轉／複製／刪除／復原 ---- */
+
+  function orgRotate(delta) {
+    var ids = orgTargetIds();
+    if (!ids.length) return;
+    orgSnapshot();
+    ids.forEach(function (id) {
+      var pg = org.pages[orgIndexOf(id)];
+      pg.rot = (pg.rot + delta + 360) % 360;
+      var img = org.cards[id] && org.cards[id].querySelector('img');
+      if (img) img.style.transform = pg.rot ? 'rotate(' + pg.rot + 'deg)' : '';
+    });
+    orgViewBuild(); // 旋轉 90° 會改變頁面長寬
+    orgUpdateUi();
+  }
+  $('orgRotL').addEventListener('click', function () { orgRotate(-90); });
+  $('orgRotR').addEventListener('click', function () { orgRotate(90); });
+
+  $('orgDup').addEventListener('click', function () {
+    var ids = orgTargetIds();
+    if (!ids.length) return;
+    var dup = {};
+    ids.forEach(function (id) { dup[id] = true; });
+    orgSnapshot();
+    var out = [];
+    org.pages.forEach(function (p) {
+      out.push(p);
+      if (dup[p.id]) out.push({ id: org.nextId++, src: p.src, rot: p.rot });
+    });
+    org.pages = out;
+    orgRender();
+  });
+
+  function orgDelete() {
+    var ids = orgTargetIds();
+    if (!ids.length) return;
+    if (ids.length === org.pages.length) {
+      showStatus($('orgStatus'), 'error', '不能刪除全部頁面，至少要保留一頁。');
+      return;
+    }
+    hideStatus($('orgStatus'));
+    var del = {};
+    ids.forEach(function (id) { del[id] = true; });
+    orgSnapshot();
+    org.pages = org.pages.filter(function (p) { return !del[p.id]; });
+    org.selected = {};
+    orgRender();
+  }
+  $('orgDel').addEventListener('click', orgDelete);
+
+  function orgUndo() {
+    var h = org.history.pop();
+    if (!h) return;
+    org.pages = h.pages;
+    org.selected = h.selected;
+    orgRender();
+  }
+  $('orgUndo').addEventListener('click', orgUndo);
+
+  /* ---- 縮放（一般模式調縮圖大小，全螢幕調右側頁面大小） ---- */
+
+  var ORG_SIZES = [80, 110, 150, 200, 260];
+  var orgSizeIdx = 1;
+  var ORG_VZ_MIN = 0.25 * PT2PX, ORG_VZ_MAX = 4 * PT2PX;
+  function orgSetSize(i) {
+    orgSizeIdx = Math.max(0, Math.min(ORG_SIZES.length - 1, i));
+    orgGrid.style.setProperty('--org-size', ORG_SIZES[orgSizeIdx] + 'px');
+    orgZoomUi();
+  }
+  function orgSetViewZoom(z) {
+    org.vz = Math.max(ORG_VZ_MIN, Math.min(ORG_VZ_MAX, z));
+    orgViewBuild();
+    orgZoomUi();
+  }
+  function orgZoomUi() {
+    if (orgIsFs()) {
+      $('orgZoomLabel').textContent = Math.round(org.vz / PT2PX * 100) + '%';
+      $('orgZoomOut').disabled = org.vz <= ORG_VZ_MIN + 1e-6;
+      $('orgZoomIn').disabled = org.vz >= ORG_VZ_MAX - 1e-6;
+    } else {
+      $('orgZoomOut').disabled = orgSizeIdx === 0;
+      $('orgZoomIn').disabled = orgSizeIdx === ORG_SIZES.length - 1;
+    }
+  }
+  $('orgZoomOut').addEventListener('click', function () {
+    if (orgIsFs()) orgSetViewZoom(org.vz / 1.25); else orgSetSize(orgSizeIdx - 1);
+  });
+  $('orgZoomIn').addEventListener('click', function () {
+    if (orgIsFs()) orgSetViewZoom(org.vz * 1.25); else orgSetSize(orgSizeIdx + 1);
+  });
+  $('orgZoomLabel').addEventListener('click', function () { orgSetViewZoom(orgFitZoom()); });
+  orgSetSize(orgSizeIdx);
+
+  /* ---- 全螢幕：左側縮圖欄＋右側連續頁面 ---- */
+
+  function orgIsFs() { return $('orgEditor').classList.contains('fs'); }
+
+  async function orgSetFs(on) {
+    if (orgIsFs() === on) return;
+    $('orgEditor').classList.toggle('fs', on);
+    document.body.style.overflow = on ? 'hidden' : '';
+    $('orgFs').textContent = on ? '✕ 完成' : '⛶ 全螢幕';
+    $('orgZoomLabel').style.display = on ? '' : 'none';
+    if (on) {
+      var start = orgSelectedIds()[0];
+      if (start === undefined && org.pages.length) start = org.pages[0].id;
+      org.current = null;
+      orgSetCurrent(start);
+      await orgEnsureSizes(); // 縮圖可能還沒畫完，先把所有頁面尺寸補齊
+      if (!orgIsFs()) return;
+      org.vz = orgFitZoom();
+      orgViewBuild();
+      orgViewGoto(start);
+    } else {
+      Object.keys(org.viewEls).forEach(function (id) { orgViewDrop(org.viewEls[id]); });
+      if (orgRO) orgRO.disconnect();
+      orgView.innerHTML = '';
+      org.viewEls = {};
+      orgSetCurrent(null);
+    }
+    orgZoomUi();
+    orgUpdateUi();
+  }
+  $('orgFs').addEventListener('click', function () { orgSetFs(!orgIsFs()); });
+
+  async function orgEnsureSizes() {
+    var gen = org.gen;
+    for (var s = 0; s < org.total; s++) {
+      if (org.sizes[s]) continue;
+      if (gen !== org.gen || !org.doc) return;
+      try {
+        var v = (await org.doc.getPage(s + 1)).getViewport({ scale: 1 });
+        org.sizes[s] = { w: v.width, h: v.height };
+      } catch (e) { /* 取不到就用預設尺寸 */ }
+    }
+  }
+
+  // 套用額外旋轉後的頁面尺寸（pt）
+  function orgPageSize(pg) {
+    var s = org.sizes[pg.src] || org.sizes[0] || { w: 595, h: 842 };
+    return pg.rot % 180 ? { w: s.h, h: s.w } : s;
+  }
+
+  // 「整頁大小」：最大的那一頁也能整頁放進右側區域
+  function orgFitZoom() {
+    // 扣掉內距與頁碼說明；高度用 offsetHeight，放大後出現的水平捲軸才不會讓結果變小
+    var aw = orgView.clientWidth - 32, ah = orgView.offsetHeight - 32 - 20;
+    var z = ORG_VZ_MAX;
+    org.pages.forEach(function (p) {
+      var s = orgPageSize(p);
+      z = Math.min(z, aw / s.w, ah / s.h);
+    });
+    return Math.max(ORG_VZ_MIN, z);
+  }
+
+  function orgSetCurrent(id, fromScroll) {
+    if (org.current === id) return;
+    var prev = org.cards[org.current];
+    if (prev) prev.classList.remove('current');
+    org.current = id === undefined ? null : id;
+    if (org.current === null) return;
+    org.curIdx = orgIndexOf(org.current);
+    var c = org.cards[org.current];
+    if (c) {
+      c.classList.add('current');
+      // 只捲動左側縮圖欄本身，不要動到整個頁面
+      if (fromScroll && !orgDrag) {
+        var wrap = $('orgGridWrap');
+        var wr = wrap.getBoundingClientRect(), cr = c.getBoundingClientRect();
+        if (cr.top < wr.top) wrap.scrollTop -= wr.top - cr.top + 10;
+        else if (cr.bottom > wr.bottom) wrap.scrollTop += cr.bottom - wr.bottom + 10;
+      }
+    }
+    orgUpdateUi();
+  }
+
+  function orgDpr() { return window.devicePixelRatio || 1; }
+  // 版面 key：頁面、旋轉、縮放、dpr 都相同，頁框的 CSS 尺寸就相同（畫布可以沿用）
+  function orgViewKey(pg) { return pg.src + '/' + pg.rot + '/' + org.vz.toFixed(4) + '/' + orgDpr(); }
+
+  // 畫布在螢幕上實際佔幾個像素，由瀏覽器回報（device-pixel-content-box）。
+  // 畫布像素必須和它完全相同才會一對一顯示；自己用「CSS 尺寸 × dpr」推算，
+  // 在 125%／150% 螢幕縮放時常差 1 像素，整張就被重新取樣而變糊。
+  // 不支援這個選項的瀏覽器（Safari）退回用 CSS 尺寸推算。
+  var orgRO = window.ResizeObserver ? new ResizeObserver(function (entries) {
+    entries.forEach(function (en) {
+      var c = en.target, b = en.devicePixelContentBoxSize && en.devicePixelContentBoxSize[0];
+      c._dw = b ? b.inlineSize : Math.round(en.contentRect.width * orgDpr());
+      c._dh = b ? b.blockSize : Math.round(en.contentRect.height * orgDpr());
+    });
+    orgViewUpdate();
+  }) : null;
+  function orgObserve(c) {
+    if (!orgRO) return;
+    try { orgRO.observe(c, { box: 'device-pixel-content-box' }); }
+    catch (e) { orgRO.observe(c); }
+  }
+  function orgCanvasDevSize(c) {
+    if (c._dw) return { w: c._dw, h: c._dh };
+    var r = c.getBoundingClientRect(), dpr = orgDpr();
+    return { w: Math.max(1, Math.round(r.width * dpr)), h: Math.max(1, Math.round(r.height * dpr)) };
+  }
+
+  // 依 org.pages 重建右側頁面（每頁一個固定的顯示畫布，畫面附近的頁面才真的渲染）
+  function orgViewBuild() {
+    if (!orgIsFs()) return;
+    // 記下目前頁在畫面中的位置，重建後捲回同一處
+    var anchorId = org.current, anchorOff = 16;
+    if (anchorId !== null && org.viewEls[anchorId]) anchorOff = org.viewEls[anchorId].offsetTop - orgView.scrollTop;
+    // 已經畫好、而且版面沒變的畫布留著重用，避免閃爍
+    var keep = {};
+    Object.keys(org.viewEls).forEach(function (id) {
+      var el = org.viewEls[id], c = el._canvas;
+      if (el._task) { el._task.cancel(); el._task = null; }
+      el._pending = null;
+      if (c && c._key) keep[id + '|' + c._layout] = c;
+      else if (c) { c.width = c.height = 0; if (orgRO) orgRO.unobserve(c); }
+    });
+    orgView.innerHTML = '';
+    org.viewEls = {};
+    var dpr = orgDpr();
+    var frag = document.createDocumentFragment();
+    org.pages.forEach(function (pg, i) {
+      var sz = orgPageSize(pg);
+      var wrap = document.createElement('div');
+      wrap.className = 'org-vpage';
+      wrap.dataset.id = pg.id;
+      var sheet = document.createElement('div');
+      sheet.className = 'org-vsheet';
+      // CSS 尺寸取實際像素的整數倍附近；最後以瀏覽器回報的實際像素為準
+      sheet.style.width = (Math.max(1, Math.round(sz.w * org.vz * dpr)) / dpr) + 'px';
+      sheet.style.height = (Math.max(1, Math.round(sz.h * org.vz * dpr)) / dpr) + 'px';
+      var k = pg.id + '|' + orgViewKey(pg);
+      var c = keep[k];
+      if (c) delete keep[k];
+      else { c = document.createElement('canvas'); c.width = c.height = 0; orgObserve(c); }
+      sheet.appendChild(c);
+      wrap._canvas = c;
+      wrap.appendChild(sheet);
+      var cap = document.createElement('div');
+      cap.className = 'org-vcap';
+      cap.textContent = '第 ' + (i + 1) + ' 頁' + (pg.src !== i ? '（原第 ' + (pg.src + 1) + ' 頁）' : '');
+      wrap.appendChild(cap);
+      org.viewEls[pg.id] = wrap;
+      frag.appendChild(wrap);
+    });
+    Object.keys(keep).forEach(function (k) {
+      keep[k].width = keep[k].height = 0;
+      if (orgRO) orgRO.unobserve(keep[k]);
+    });
+    orgView.appendChild(frag);
+    // 目前頁被刪掉了：改成同位置（或最後一頁）
+    if (anchorId === null || !org.viewEls[anchorId]) {
+      var p = org.pages[Math.min(org.curIdx, org.pages.length - 1)];
+      anchorId = p ? p.id : null;
+      org.current = null;
+      orgSetCurrent(anchorId);
+    } else {
+      org.curIdx = orgIndexOf(anchorId);
+    }
+    if (anchorId !== null) orgView.scrollTop = org.viewEls[anchorId].offsetTop - anchorOff;
+    orgViewUpdate();
+  }
+
+  function orgViewGoto(id) {
+    var el = org.viewEls[id];
+    org.gotoUntil = Date.now() + 400; // 跳頁觸發的捲動不要反過來改「目前頁」
+    orgSetCurrent(id, true);
+    if (el) orgView.scrollTop = el.offsetTop - 16;
+    orgViewUpdate();
+  }
+
+  // 捲動時：畫面附近的頁面才渲染、離太遠的釋放畫布，並更新目前頁
+  function orgViewUpdate() {
+    if (!orgIsFs()) return;
+    var vr = orgView.getBoundingClientRect();
+    var near = vr.height;
+    var cur = null;
+    org.pages.forEach(function (pg, i) {
+      var el = org.viewEls[pg.id];
+      if (!el) return;
+      var r = el.getBoundingClientRect();
+      if (cur === null && r.bottom > vr.top + vr.height * 0.3) cur = i;
+      if (r.bottom > vr.top - near && r.top < vr.bottom + near) orgViewRender(el, pg);
+      else if (r.bottom < vr.top - 3 * near || r.top > vr.bottom + 3 * near) orgViewDrop(el);
+    });
+    if (cur !== null && Date.now() > org.gotoUntil) orgSetCurrent(org.pages[cur].id, true);
+  }
+  // 視窗大小或縮放比例（devicePixelRatio）改變：重算頁框尺寸並重畫
+  window.addEventListener('resize', function () { if (orgIsFs()) orgViewBuild(); });
+  var orgViewRaf = 0;
+  orgView.addEventListener('scroll', function () {
+    if (orgViewRaf) return;
+    orgViewRaf = requestAnimationFrame(function () { orgViewRaf = 0; orgViewUpdate(); });
+  });
+
+  // 先畫在暫存畫布上，畫完才一次複製到顯示畫布（同一個畫布不能同時跑兩個 render）
+  async function orgViewRender(el, pg) {
+    var c = el._canvas;
+    if (orgRO && !c._dw) return; // 等瀏覽器回報實際像素後（ResizeObserver）再畫
+    var dev = orgCanvasDevSize(c);
+    var key = orgViewKey(pg) + '/' + dev.w + 'x' + dev.h;
+    if (c._key === key || el._pending === key) return;
+    if (el._task) { el._task.cancel(); el._task = null; }
+    el._pending = key;
+    var gen = org.gen;
+    var tmp = null;
+    try {
+      var page = await org.doc.getPage(pg.src + 1);
+      if (el._pending !== key || gen !== org.gen) return;
+      var rotation = (page.rotate + pg.rot) % 360;
+      var cw = dev.w, ch = dev.h;
+      var limit = 12e6; // 單頁畫布最多約 1200 萬像素，放很大時不爆記憶體（超過才降解析度）
+      if (cw * ch > limit) {
+        var k = Math.sqrt(limit / (cw * ch));
+        cw = Math.floor(cw * k);
+        ch = Math.floor(ch * k);
+      }
+      var vp = page.getViewport({ scale: org.vz * orgDpr(), rotation: rotation });
+      tmp = document.createElement('canvas');
+      tmp.width = cw;
+      tmp.height = ch;
+      // 不透明畫布：Chrome／Edge 只有在 alpha:false 的畫布上才會用 ClearType 式（次像素）反鋸齒畫文字，
+      // 一般畫布只有灰階反鋸齒，字會比較淡、比較軟。背景本來就是白的，不透明沒有副作用。
+      var ctx = tmp.getContext('2d', { alpha: false });
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, cw, ch);
+      // 把頁面精確鋪滿整數像素的畫布
+      var task = page.render({ canvasContext: ctx, viewport: vp, transform: [cw / vp.width, 0, 0, ch / vp.height, 0, 0] });
+      el._task = task;
+      await task.promise;
+      page.cleanup();
+      if (el._pending !== key) return;
+      el._task = null;
+      el._pending = null;
+      c.width = cw;
+      c.height = ch;
+      c.getContext('2d', { alpha: false }).drawImage(tmp, 0, 0);
+      c._key = key;
+      c._layout = orgViewKey(pg);
+    } catch (e) {
+      if (el._pending === key) { el._pending = null; el._task = null; }
+    } finally {
+      if (tmp) tmp.width = tmp.height = 0;
+    }
+  }
+
+  function orgViewDrop(el) {
+    if (el._task) { el._task.cancel(); el._task = null; }
+    el._pending = null;
+    var c = el._canvas;
+    if (c) { c.width = c.height = 0; c._key = null; }
+  }
+
+  // 鍵盤：Ctrl+Z 復原、Delete 刪除、Esc 取消拖曳／離開全螢幕（只在這個分頁、沒有在輸入框打字時）
+  document.addEventListener('keydown', function (e) {
+    if (!$('panel-organize').classList.contains('active') || !org.file) return;
+    if ($('viewer').classList.contains('show')) return;
+    var t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (e.key === 'Escape') {
+      if (orgDrag && orgDrag.started) orgEndDrag(false);
+      else orgSetFs(false);
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      orgUndo();
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (orgTargetIds().length) { e.preventDefault(); orgDelete(); }
     }
   });
 
-  $('splitBtn').addEventListener('click', async function () {
-    var status = $('splitStatus');
+  /* ---- 拖曳排序（Pointer Events：滑鼠直接拖，觸控長按後拖） ---- */
+
+  var orgDrag = null;
+
+  orgGrid.addEventListener('pointerdown', function (e) {
+    var card = e.target.closest('.org-card');
+    if (!card || e.target.closest('.thumb-zoom') || e.target.closest('.org-check') || orgDrag) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    orgDrag = {
+      id: Number(card.dataset.id),
+      pointerId: e.pointerId,
+      x0: e.clientX, y0: e.clientY,
+      x: e.clientX, y: e.clientY,
+      touch: e.pointerType !== 'mouse',
+      started: false,
+      insertAt: null
+    };
+    if (orgDrag.touch) {
+      orgDrag.timer = setTimeout(function () {
+        if (orgDrag && !orgDrag.started) orgStartDrag();
+      }, 450);
+    }
+  });
+
+  // 拖曳開始後擋掉觸控捲動（必須是非 passive 監聽器）
+  orgGrid.addEventListener('touchmove', function (e) {
+    if (orgDrag && orgDrag.started) e.preventDefault();
+  }, { passive: false });
+
+  window.addEventListener('pointermove', function (e) {
+    if (!orgDrag || e.pointerId !== orgDrag.pointerId) return;
+    orgDrag.x = e.clientX;
+    orgDrag.y = e.clientY;
+    if (!orgDrag.started) {
+      var moved = Math.abs(e.clientX - orgDrag.x0) + Math.abs(e.clientY - orgDrag.y0);
+      if (moved < (orgDrag.touch ? 10 : 6)) return;
+      if (orgDrag.touch) { orgEndDrag(false); return; } // 還沒長按就移動＝在捲動頁面
+      orgStartDrag();
+    }
+    orgDragMove();
+  });
+  window.addEventListener('pointerup', function (e) {
+    if (!orgDrag || e.pointerId !== orgDrag.pointerId) return;
+    orgEndDrag(orgDrag.started);
+  });
+  window.addEventListener('pointercancel', function (e) {
+    if (!orgDrag || e.pointerId !== orgDrag.pointerId) return;
+    orgEndDrag(false);
+  });
+
+  function orgStartDrag() {
+    var d = orgDrag;
+    d.started = true;
+    clearTimeout(d.timer);
+    d.ids = org.selected[d.id] ? orgSelectedIds() : [d.id];
+    d.ids.forEach(function (id) { if (org.cards[id]) org.cards[id].classList.add('dragging'); });
+
+    var pg = org.pages[orgIndexOf(d.id)];
+    var ghost = document.createElement('div');
+    ghost.className = 'org-ghost';
+    if (org.thumbs[pg.src]) {
+      var img = document.createElement('img');
+      img.src = org.thumbs[pg.src];
+      img.style.transform = pg.rot ? 'rotate(' + pg.rot + 'deg)' : '';
+      ghost.appendChild(img);
+    }
+    if (d.ids.length > 1) {
+      var cnt = document.createElement('span');
+      cnt.className = 'cnt';
+      cnt.textContent = d.ids.length;
+      ghost.appendChild(cnt);
+    }
+    document.body.appendChild(ghost);
+    d.ghost = ghost;
+    if (d.touch && navigator.vibrate) navigator.vibrate(20);
+    // 拖到上下緣時自動捲動（全螢幕時捲左側縮圖欄，否則捲整個頁面）
+    d.scrollTimer = setInterval(function () {
+      var fs = orgIsFs();
+      var wrap = $('orgGridWrap');
+      var top = 0, bottom = window.innerHeight;
+      if (fs) { var wr = wrap.getBoundingClientRect(); top = wr.top; bottom = wr.bottom; }
+      var edge = 60, step = 0;
+      if (d.y < top + edge) step = -Math.ceil((top + edge - d.y) / 4);
+      else if (d.y > bottom - edge) step = Math.ceil((d.y - (bottom - edge)) / 4);
+      if (!step) return;
+      if (fs) wrap.scrollTop += step; else window.scrollBy(0, step);
+      orgDragMove();
+    }, 16);
+    orgDragMove();
+  }
+
+  // 找離指標最近的縮圖，決定插在它前面還是後面，並畫出插入標記
+  // （全螢幕的縮圖欄是單欄直排，前後改看上下、標記改成橫線）
+  function orgDragMove() {
+    var d = orgDrag;
+    var vertical = orgIsFs();
+    d.ghost.style.left = d.x + 'px';
+    d.ghost.style.top = d.y + 'px';
+    var best = null, bestD = Infinity;
+    for (var i = 0; i < org.pages.length; i++) {
+      var r = org.cards[org.pages[i].id].getBoundingClientRect();
+      var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      var dist = Math.abs(d.x - cx) + Math.abs(d.y - cy) * 2; // 偏好同一列
+      if (dist < bestD) { bestD = dist; best = { i: i, r: r, after: vertical ? d.y > cy : d.x > cx }; }
+    }
+    if (!best) return;
+    d.insertAt = best.after ? best.i + 1 : best.i;
+    var gr = orgGrid.getBoundingClientRect();
+    orgMarker.style.display = 'block';
+    if (vertical) {
+      var y = best.after ? best.r.bottom + 5 : best.r.top - 5; // 格線間距 10px 的正中央
+      orgMarker.style.left = (best.r.left - gr.left) + 'px';
+      orgMarker.style.top = (y - gr.top - 2) + 'px';
+      orgMarker.style.width = best.r.width + 'px';
+      orgMarker.style.height = '4px';
+    } else {
+      var x = best.after ? best.r.right + 5 : best.r.left - 5;
+      orgMarker.style.left = (x - gr.left - 2) + 'px';
+      orgMarker.style.top = (best.r.top - gr.top) + 'px';
+      orgMarker.style.width = '4px';
+      orgMarker.style.height = best.r.height + 'px';
+    }
+  }
+
+  function orgEndDrag(commit) {
+    var d = orgDrag;
+    orgDrag = null;
+    clearTimeout(d.timer);
+    if (!d.started) return;
+    clearInterval(d.scrollTimer);
+    if (d.ghost) d.ghost.remove();
+    orgMarker.style.display = 'none';
+    // 拖曳結束後瀏覽器可能還會補一個 click，別讓它變成勾選
+    orgSuppressClick = true;
+    setTimeout(function () { orgSuppressClick = false; }, 0);
+
+    var moving = {};
+    d.ids.forEach(function (id) { moving[id] = true; });
+    var newPages = null;
+    if (commit && d.insertAt !== null) {
+      var before = 0;
+      for (var i = 0; i < d.insertAt; i++) if (!moving[org.pages[i].id]) before++;
+      var rest = org.pages.filter(function (p) { return !moving[p.id]; });
+      var moved = org.pages.filter(function (p) { return moving[p.id]; });
+      newPages = rest.slice(0, before).concat(moved, rest.slice(before));
+      var same = newPages.every(function (p, i) { return p === org.pages[i]; });
+      if (same) newPages = null;
+    }
+    if (newPages) {
+      orgSnapshot();
+      org.pages = newPages;
+      orgRender();
+    } else {
+      d.ids.forEach(function (id) { if (org.cards[id]) org.cards[id].classList.remove('dragging'); });
+    }
+  }
+
+  /* ---- 放大檢視 ---- */
+
+  async function orgRenderFull(i) {
+    if (!org.doc) throw new Error('檔案已被清除');
+    var pg = org.pages[i];
+    var page = await org.doc.getPage(pg.src + 1);
+    var rotation = (page.rotate + pg.rot) % 360;
+    var base = page.getViewport({ scale: 1, rotation: rotation });
+    var maxDim = IS_MOBILE ? 1600 : 2400;
+    var scale = Math.min(maxDim / Math.max(base.width, base.height), 3);
+    var vp = page.getViewport({ scale: scale, rotation: rotation });
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.floor(vp.width);
+    canvas.height = Math.floor(vp.height);
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    page.cleanup();
+    var url = canvas.toDataURL('image/jpeg', 0.85);
+    canvas.width = canvas.height = 0;
+    return url;
+  }
+
+  function orgOpenFull(index) {
+    if (index < 0) return;
+    Viewer.open({
+      index: index,
+      min: 0,
+      max: org.pages.length - 1,
+      caption: function (i) {
+        var pg = org.pages[i];
+        return '第 ' + (i + 1) + ' 頁 / 共 ' + org.pages.length + ' 頁' +
+          (pg.src !== i ? '（原第 ' + (pg.src + 1) + ' 頁）' : '');
+      },
+      getImage: orgRenderFull,
+      isSelected: function (i) { return !!org.selected[org.pages[i].id]; },
+      onToggle: function (i) {
+        var id = org.pages[i].id;
+        orgSetSelected(id, !org.selected[id]);
+        orgUpdateUi();
+      }
+    });
+  }
+
+  /* ---- 匯出 ---- */
+
+  // 依 list（org.pages 的子集合，照順序）產生新 PDF 的位元組，套用額外旋轉
+  async function orgBuildPdf(list) {
+    var buf = await org.file.arrayBuffer();
+    var src = await PDFLib.PDFDocument.load(buf, { ignoreEncryption: true });
+    var out = await PDFLib.PDFDocument.create();
+    var copied = await out.copyPages(src, list.map(function (p) { return p.src; }));
+    copied.forEach(function (page, i) {
+      var r = list[i].rot;
+      if (r) {
+        var angle = ((page.getRotation().angle + r) % 360 + 360) % 360;
+        page.setRotation(PDFLib.degrees(angle));
+      }
+      out.addPage(page);
+    });
+    return out.save();
+  }
+
+  async function orgExport(onlySelected) {
+    var status = $('orgStatus');
     hideStatus(status);
-    if (!splitFile) {
+    if (!org.file) {
       showStatus(status, 'error', '請先選擇一個 PDF 檔案。');
       return;
     }
-    var text = $('splitPages').value.trim();
-    if (!text) {
-      showStatus(status, 'error', '請輸入要保留的頁碼，例如：1,3,5-8');
+    var list = onlySelected
+      ? org.pages.filter(function (p) { return org.selected[p.id]; })
+      : org.pages;
+    if (!list.length) {
+      showStatus(status, 'error', '請先選取要匯出的頁面（點縮圖或輸入頁碼）。');
       return;
     }
-    var pages;
-    try {
-      pages = parsePageRange(text, splitTotalPages);
-    } catch (e) {
-      showStatus(status, 'error', e.message);
-      return;
-    }
-    var btn = $('splitBtn');
-    btn.disabled = true;
+    var btns = [$('orgBtn'), $('orgSelBtn'), $('orgToFill')];
+    btns.forEach(function (b) { b.disabled = true; });
     showStatus(status, 'info', '處理中，請稍候…');
     await nextFrame();
     try {
-      var buf = await splitFile.arrayBuffer();
-      var src = await PDFLib.PDFDocument.load(buf, { ignoreEncryption: true });
-      var out = await PDFLib.PDFDocument.create();
-      var indices = pages.map(function (p) { return p - 1; });
-      var copied = await out.copyPages(src, indices);
-      copied.forEach(function (p) { out.addPage(p); });
-      var bytes = await out.save();
-      var base = splitFile.name.replace(/\.pdf$/i, '');
+      var bytes = await orgBuildPdf(list);
+      var base = org.file.name.replace(/\.pdf$/i, '');
       var outBlob = new Blob([bytes], { type: 'application/pdf' });
-      downloadBlob(outBlob, base + '_選取頁面.pdf');
-      showStatus(status, 'success', '✅ 已匯出 ' + pages.length + ' 頁的新 PDF（' +
+      downloadBlob(outBlob, base + (onlySelected ? '_選取頁面.pdf' : '_整理後.pdf'));
+      showStatus(status, 'success', '✅ 已匯出 ' + list.length + ' 頁的新 PDF（' +
         formatSize(outBlob.size) + '），已開始下載。');
     } catch (err) {
       showStatus(status, 'error', '匯出失敗：' + err.message);
     } finally {
-      btn.disabled = false;
+      btns.forEach(function (b) { b.disabled = false; });
+      orgUpdateUi();
     }
-  });
+  }
+  $('orgBtn').addEventListener('click', function () { orgExport(false); });
+  $('orgSelBtn').addEventListener('click', function () { orgExport(true); });
 
   /* ================= 功能 F：填寫文字 ================= */
 
@@ -2089,20 +3117,22 @@
     fillRenderPage();
   }
 
-  setupDropZone($('fillDrop'), $('fillInput'), async function (files) {
+  setupDropZone($('fillDrop'), $('fillInput'), function (files) { fillOpenFile(files[0]); });
+
+  // 讀入 PDF（選檔，或從「頁面整理」接續帶入），成功回傳 true
+  async function fillOpenFile(f) {
     var status = $('fillStatus');
     hideStatus(status);
     $('fillInfo').style.display = 'none';
     fillClearAll();
 
-    var f = files[0];
     if (!(await isPdfFile(f))) {
       showStatus(status, 'error', '「' + f.name + '」不是 PDF 檔案，請重新選擇。');
-      return;
+      return false;
     }
     if (!pdfjsLib) {
       showStatus(status, 'error', 'PDF 顯示元件載入失敗，請檢查網路後重新整理頁面。');
-      return;
+      return false;
     }
     showStatus(status, 'info', '正在讀取 PDF…');
     try {
@@ -2117,11 +3147,13 @@
       await fillRenderPage();
       // 先在背景下載字型，匯出時就不用等
       fillFetchFont().catch(function () { /* 匯出時會再試並顯示錯誤 */ });
+      return true;
     } catch (e) {
       fillClearAll();
       showStatus(status, 'error', '無法讀取這個 PDF，檔案可能已損毀或有密碼保護。');
+      return false;
     }
-  });
+  }
 
   $('fillPrev').addEventListener('click', function () {
     if (fillCur > 1) { fillCur--; fillDeselect(); fillRenderPage(); }
@@ -2179,6 +3211,14 @@
     fillResizeTimer = setTimeout(fillRenderPage, 200);
   });
 
+  // 有內容的文字框（先讓正在編輯的框失焦，最後打的字才會寫回 b.text）
+  function fillTextBoxes() {
+    if (document.activeElement && document.activeElement.classList.contains('fill-text')) {
+      document.activeElement.blur();
+    }
+    return fillBoxes.filter(function (b) { return b.text.trim(); });
+  }
+
   $('fillBtn').addEventListener('click', async function () {
     var status = $('fillStatus');
     hideStatus(status);
@@ -2186,87 +3226,15 @@
       showStatus(status, 'error', '請先選擇一個 PDF 檔案。');
       return;
     }
-    if (document.activeElement && document.activeElement.classList.contains('fill-text')) {
-      document.activeElement.blur();
-    }
-    var boxes = fillBoxes.filter(function (b) { return b.text.trim(); });
+    var boxes = fillTextBoxes();
     if (boxes.length === 0) {
       showStatus(status, 'error', '請先點頁面任意位置新增文字框並輸入文字。');
       return;
     }
-    if (!window.fontkit) {
-      showStatus(status, 'error', '字型元件載入失敗，請檢查網路後重新整理頁面。');
-      return;
-    }
-    var btn = $('fillBtn');
-    btn.disabled = true;
+    var btns = [$('fillBtn'), $('fillToOrg')];
+    btns.forEach(function (b) { b.disabled = true; });
     try {
-      showStatus(status, 'info', '正在下載中文字型與子集化引擎（約 7 MB，只需下載一次，之後由瀏覽器快取）…');
-      var loaded = await Promise.all([fillFetchFont(), fillLoadHb()]);
-      var fontBytes = loaded[0];
-      var hb = loaded[1];
-      // 等預覽字型套用、版面重排安定，斷行擷取才會與最終畫面一致
-      try { await document.fonts.ready; } catch (e) { /* 不支援就略過 */ }
-      await nextFrame();
-
-      showStatus(status, 'info', '正在裁剪字型（只保留用到的字）…');
-      await nextFrame();
-      var usedText = boxes.map(function (b) { return b.text; }).join('');
-      var subsetBytes = fillSubsetFont(hb, fontBytes, usedText);
-
-      showStatus(status, 'info', '正在寫入 PDF…');
-      await nextFrame();
-      var buf = await fillFile.arrayBuffer();
-      var src = await PDFLib.PDFDocument.load(buf, { ignoreEncryption: true });
-      src.registerFontkit(window.fontkit);
-      var font = await src.embedFont(subsetBytes, { subset: false });
-
-      // 第一行 baseline 距文字框頂端 = 半行距 + 上緣高度（與 CSS line-height 對齊）
-      var asc = 0.88, desc = 0.12;
-      try {
-        var fk = font.embedder.font;
-        var os2 = fk['OS/2'];
-        if (os2 && os2.typoAscender) {
-          asc = os2.typoAscender / fk.unitsPerEm;
-          desc = Math.abs(os2.typoDescender) / fk.unitsPerEm;
-        }
-      } catch (e) { /* 用預設值 */ }
-      var baseFactor = asc + Math.max(0, (FILL_LINE_HEIGHT - (asc + desc)) / 2);
-
-      var pdfPages = src.getPages();
-      for (var i = 0; i < boxes.length; i++) {
-        var b = boxes[i];
-        var jsPage = await fillDoc.getPage(b.page);
-        var vp1 = jsPage.getViewport({ scale: 1 });
-        var rot = (((jsPage.rotate || 0) % 360) + 360) % 360;
-        var c = FILL_COLORS[b.color];
-        // 逐行繪製，才能做置中／靠右對齊；有設寬度的框直接沿用預覽的斷行結果
-        var lines = b.w ? fillDomLines(b) : b.text.split('\n');
-        var lineWidths = lines.map(function (ln) {
-          return ln ? font.widthOfTextAtSize(ln, b.size) : 0;
-        });
-        // 對齊基準寬度：有設定寬度用它，沒有就用最寬的一行（與 CSS text-align 行為一致）
-        var effW = b.w || Math.max.apply(null, lineWidths.concat([0]));
-        for (var li = 0; li < lines.length; li++) {
-          if (!lines[li]) continue;
-          var dx = b.align === 'center' ? (effW - lineWidths[li]) / 2 :
-                   b.align === 'right' ? (effW - lineWidths[li]) : 0;
-          // convertToPdfPoint 會處理縮放、旋轉與座標原點（左上 → 左下）
-          var pt = vp1.convertToPdfPoint(
-            b.vx + dx,
-            b.vy + b.size * baseFactor + li * b.size * FILL_LINE_HEIGHT
-          );
-          pdfPages[b.page - 1].drawText(lines[li], {
-            x: pt[0],
-            y: pt[1],
-            size: b.size,
-            font: font,
-            color: PDFLib.rgb(c.r, c.g, c.b),
-            rotate: PDFLib.degrees(rot)
-          });
-        }
-      }
-      var bytes = await src.save();
+      var bytes = await fillBuildPdf(boxes, status);
       var base = fillFile.name.replace(/\.pdf$/i, '');
       var outBlob = new Blob([bytes], { type: 'application/pdf' });
       downloadBlob(outBlob, base + '_已填寫.pdf');
@@ -2275,7 +3243,145 @@
     } catch (err) {
       showStatus(status, 'error', '匯出失敗：' + err.message);
     } finally {
-      btn.disabled = false;
+      btns.forEach(function (b) { b.disabled = false; });
+    }
+  });
+
+  // 把文字框寫進 PDF，回傳新 PDF 的位元組（進度顯示在 status）
+  async function fillBuildPdf(boxes, status) {
+    if (!window.fontkit) throw new Error('字型元件載入失敗，請檢查網路後重新整理頁面。');
+    showStatus(status, 'info', '正在下載中文字型與子集化引擎（約 7 MB，只需下載一次，之後由瀏覽器快取）…');
+    var loaded = await Promise.all([fillFetchFont(), fillLoadHb()]);
+    var fontBytes = loaded[0];
+    var hb = loaded[1];
+    // 等預覽字型套用、版面重排安定，斷行擷取才會與最終畫面一致
+    try { await document.fonts.ready; } catch (e) { /* 不支援就略過 */ }
+    await nextFrame();
+
+    showStatus(status, 'info', '正在裁剪字型（只保留用到的字）…');
+    await nextFrame();
+    var usedText = boxes.map(function (b) { return b.text; }).join('');
+    var subsetBytes = fillSubsetFont(hb, fontBytes, usedText);
+
+    showStatus(status, 'info', '正在寫入 PDF…');
+    await nextFrame();
+    var buf = await fillFile.arrayBuffer();
+    var src = await PDFLib.PDFDocument.load(buf, { ignoreEncryption: true });
+    src.registerFontkit(window.fontkit);
+    var font = await src.embedFont(subsetBytes, { subset: false });
+
+    // 第一行 baseline 距文字框頂端 = 半行距 + 上緣高度（與 CSS line-height 對齊）
+    var asc = 0.88, desc = 0.12;
+    try {
+      var fk = font.embedder.font;
+      var os2 = fk['OS/2'];
+      if (os2 && os2.typoAscender) {
+        asc = os2.typoAscender / fk.unitsPerEm;
+        desc = Math.abs(os2.typoDescender) / fk.unitsPerEm;
+      }
+    } catch (e) { /* 用預設值 */ }
+    var baseFactor = asc + Math.max(0, (FILL_LINE_HEIGHT - (asc + desc)) / 2);
+
+    var pdfPages = src.getPages();
+    for (var i = 0; i < boxes.length; i++) {
+      var b = boxes[i];
+      var jsPage = await fillDoc.getPage(b.page);
+      var vp1 = jsPage.getViewport({ scale: 1 });
+      var rot = (((jsPage.rotate || 0) % 360) + 360) % 360;
+      var c = FILL_COLORS[b.color];
+      // 逐行繪製，才能做置中／靠右對齊；有設寬度的框直接沿用預覽的斷行結果
+      var lines = b.w ? fillDomLines(b) : b.text.split('\n');
+      var lineWidths = lines.map(function (ln) {
+        return ln ? font.widthOfTextAtSize(ln, b.size) : 0;
+      });
+      // 對齊基準寬度：有設定寬度用它，沒有就用最寬的一行（與 CSS text-align 行為一致）
+      var effW = b.w || Math.max.apply(null, lineWidths.concat([0]));
+      for (var li = 0; li < lines.length; li++) {
+        if (!lines[li]) continue;
+        var dx = b.align === 'center' ? (effW - lineWidths[li]) / 2 :
+                 b.align === 'right' ? (effW - lineWidths[li]) : 0;
+        // convertToPdfPoint 會處理縮放、旋轉與座標原點（左上 → 左下）
+        var pt = vp1.convertToPdfPoint(
+          b.vx + dx,
+          b.vy + b.size * baseFactor + li * b.size * FILL_LINE_HEIGHT
+        );
+        pdfPages[b.page - 1].drawText(lines[li], {
+          x: pt[0],
+          y: pt[1],
+          size: b.size,
+          font: font,
+          color: PDFLib.rgb(c.r, c.g, c.b),
+          rotate: PDFLib.degrees(rot)
+        });
+      }
+    }
+    return src.save();
+  }
+
+  /* ================= 頁面整理 ⇄ 填寫文字：接續處理 ================= */
+
+  // 把產生好的 PDF 直接交給另一個分頁，不用先下載再重新上傳
+  $('orgToFill').addEventListener('click', async function () {
+    var status = $('orgStatus');
+    hideStatus(status);
+    if (!org.file) {
+      showStatus(status, 'error', '請先選擇一個 PDF 檔案。');
+      return;
+    }
+    if (fillFile && fillTextBoxes().length &&
+        !confirm('「填寫文字」裡還有尚未匯出的文字，帶入新檔案會清掉它們。要繼續嗎？')) return;
+    var btns = [$('orgBtn'), $('orgSelBtn'), $('orgToFill')];
+    btns.forEach(function (b) { b.disabled = true; });
+    showStatus(status, 'info', '正在套用排序與旋轉…');
+    await nextFrame();
+    try {
+      var bytes = await orgBuildPdf(org.pages);
+      var name = org.file.name.replace(/\.pdf$/i, '') + '_整理後.pdf';
+      var f = new File([bytes], name, { type: 'application/pdf' });
+      hideStatus(status);
+      showTab('fill');
+      window.scrollTo(0, 0);
+      if (await fillOpenFile(f)) {
+        showStatus($('fillStatus'), 'info', '已從「頁面整理」帶入整理後的 PDF（共 ' + fillTotal +
+          ' 頁），點頁面任意位置就能開始填字。');
+      }
+    } catch (err) {
+      showStatus(status, 'error', '帶入失敗：' + err.message);
+    } finally {
+      btns.forEach(function (b) { b.disabled = false; });
+      orgUpdateUi();
+    }
+  });
+
+  $('fillToOrg').addEventListener('click', async function () {
+    var status = $('fillStatus');
+    hideStatus(status);
+    if (!fillFile) {
+      showStatus(status, 'error', '請先選擇一個 PDF 檔案。');
+      return;
+    }
+    if (org.file && org.history.length &&
+        !confirm('「頁面整理」裡還有尚未匯出的調整（排序、旋轉等），帶入新檔案會清掉它們。要繼續嗎？')) return;
+    var boxes = fillTextBoxes();
+    var btns = [$('fillBtn'), $('fillToOrg')];
+    btns.forEach(function (b) { b.disabled = true; });
+    try {
+      // 還沒加任何文字就直接帶原檔過去
+      var bytes = boxes.length ? await fillBuildPdf(boxes, status) : await fillFile.arrayBuffer();
+      var name = boxes.length ? fillFile.name.replace(/\.pdf$/i, '') + '_已填寫.pdf' : fillFile.name;
+      var f = new File([bytes], name, { type: 'application/pdf' });
+      hideStatus(status);
+      showTab('organize');
+      window.scrollTo(0, 0);
+      if (await orgOpenFile(f)) {
+        showStatus($('orgStatus'), 'info', boxes.length
+          ? '已從「填寫文字」帶入（已寫入 ' + boxes.length + ' 段文字），可以接著排序、旋轉或刪頁。'
+          : '已從「填寫文字」帶入（還沒有加任何文字），可以接著排序、旋轉或刪頁。');
+      }
+    } catch (err) {
+      showStatus(status, 'error', '帶入失敗：' + err.message);
+    } finally {
+      btns.forEach(function (b) { b.disabled = false; });
     }
   });
 
@@ -3453,11 +4559,48 @@
   var GS_CDN = 'https://cdn.jsdelivr.net/npm/@jspawn/ghostscript-wasm@0.0.2/';
   var gsFactory = null; // 引擎模組只下載一次
 
+  // 「指定目標大小」依畫質由高到低排好的候選設定，搜尋第一個不超過上限的。
+  // 先只降圖片解析度、維持高畫質 JPEG（/printer）；降到 150 DPI 還放不下，才改用較低的 JPEG 品質（/ebook、/screen）。
+  // 文字、向量圖、字型都不受影響。實測（58 MB 論文）：300 DPI 5.7 MB → 200 DPI 3.7 MB → /ebook 1.8 MB。
+  var TARGET_STEPS = [
+    { preset: '/printer', label: '原始圖片解析度、高畫質' },
+    { preset: '/printer', dpi: 250 },
+    { preset: '/printer', dpi: 220 },
+    { preset: '/printer', dpi: 200 },
+    { preset: '/printer', dpi: 175 },
+    { preset: '/printer', dpi: 150 },
+    { preset: '/ebook', dpi: 150, low: true },
+    { preset: '/ebook', dpi: 120, low: true },
+    { preset: '/ebook', dpi: 96, low: true },
+    { preset: '/screen', dpi: 72, low: true }
+  ];
+  function targetStepLabel(s) {
+    return s.label || ('圖片 ' + s.dpi + ' DPI、' + (s.low ? '較低畫質' : '高畫質') + ' JPEG');
+  }
+  // 1 MB 以 1,000,000 位元組計算：比 1,048,576 嚴格，不管上傳平台用哪一種算法都不會超過
+  function compressTargetBytes() {
+    var mb = parseFloat($('compressTarget').value);
+    return mb > 0 ? Math.round(mb * 1e6) : 0;
+  }
+  function isTargetMode() {
+    return $('compressMode').value === 'deep' && $('compressLevel').value === 'target';
+  }
+
   function updateCompressHint() {
     var deep = $('compressMode').value === 'deep';
-    $('compressHint').textContent = deep
-      ? '✅ 深度壓縮使用 Ghostscript 引擎：文字保持可選取、可搜尋，圖片會智慧降低解析度。第一次使用需下載約 16 MB 的引擎，之後瀏覽器會快取。'
-      : '⚠️ 轉圖壓縮會把每一頁變成圖片，文字將無法選取、複製或搜尋。適合當深度壓縮處理不了某個檔案時的備用方案。';
+    $('compressHint').textContent = !deep
+      ? '⚠️ 轉圖壓縮會把每一頁變成圖片，文字將無法選取、複製或搜尋。適合當深度壓縮處理不了某個檔案時的備用方案。'
+      : isTargetMode()
+        ? '🎯 會自動試幾種圖片解析度（最多約 5 次，每次都重新壓縮整份檔案），挑出不超過上限、畫質最好的結果。只調整照片與點陣圖，文字、表格、向量圖完全不動。實際上限請依學校或上傳平台的規定填寫；為了保險，1 MB 以 1,000,000 位元組計算。'
+        : '✅ 深度壓縮使用 Ghostscript 引擎：文字保持可選取、可搜尋，圖片會智慧降低解析度。第一次使用需下載約 16 MB 的引擎，之後瀏覽器會快取。';
+    $('compressTargetRow').style.display = isTargetMode() ? 'block' : 'none';
+    // 轉圖壓縮沒有目標大小模式
+    $('compressLevel').querySelector('option[value=target]').disabled = !deep;
+    if (!deep && $('compressLevel').value === 'target') $('compressLevel').value = 'medium';
+    var mb = parseFloat($('compressTarget').value);
+    document.querySelectorAll('.target-row .mini-btn').forEach(function (b) {
+      b.classList.toggle('active', Number(b.dataset.mb) === mb);
+    });
   }
   updateCompressHint();
 
@@ -3465,6 +4608,15 @@
     var el = $('compressEstimate');
     el.textContent = '';
     if (!compressFile || !compressPageDims) return;
+    if (isTargetMode()) {
+      var tb = compressTargetBytes();
+      if (!tb) { el.textContent = '請輸入大於 0 的大小上限。'; return; }
+      el.textContent = compressFile.size <= tb
+        ? '📦 原始大小：' + formatSize(compressFile.size) + '，已經在上限 ' + $('compressTarget').value + ' MB 以內，不需要壓縮。'
+        : '📦 原始大小：' + formatSize(compressFile.size) + '，目標：' + $('compressTarget').value +
+          ' MB 以內。檔案越大每次嘗試越久，壓完會顯示實際大小與用了哪種設定。';
+      return;
+    }
     if ($('compressMode').value === 'deep') {
       el.textContent = '📦 原始大小：' + formatSize(compressFile.size) +
         '。深度壓縮的效果依內容而定：掃描檔／照片型常可縮到原本的 2～4 成，文字型 PDF 空間較小。壓完會顯示實際大小再讓你決定要不要下載。';
@@ -3478,10 +4630,18 @@
       '，預估壓縮後：約 ' + formatSize(est) +
       '（依頁面內容複雜度會有明顯差異，實際大小以結果為準）';
   }
-  $('compressLevel').addEventListener('change', updateCompressEstimate);
-  $('compressMode').addEventListener('change', function () {
+  function onCompressOptionChange() {
     updateCompressHint();
     updateCompressEstimate();
+  }
+  $('compressLevel').addEventListener('change', onCompressOptionChange);
+  $('compressMode').addEventListener('change', onCompressOptionChange);
+  $('compressTarget').addEventListener('input', onCompressOptionChange);
+  document.querySelectorAll('.target-row .mini-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      $('compressTarget').value = b.dataset.mb;
+      onCompressOptionChange();
+    });
   });
 
   // 下載並快取 Ghostscript 引擎模組
@@ -3498,46 +4658,77 @@
     return gsFactory;
   }
 
-  // 用 Ghostscript 執行深度壓縮，回傳壓縮後的 Blob
-  async function runDeepCompress(file, preset, status, progress) {
-    var factory = await loadGsFactory(status);
-    showStatus(status, 'info', '正在初始化引擎…');
-    setProgress(progress, 1, 3, '初始化引擎');
-    await nextFrame();
-
+  // 用 Ghostscript 壓縮一次，回傳輸出的位元組。dpi 有給就把圖片降到該解析度（超過就降，不留 1.5 倍緩衝）
+  async function gsCompressOnce(factory, data, preset, dpi) {
     // 每次建立新的引擎實例，確保虛擬檔案系統是乾淨的
     var gs = await factory({
       locateFile: function (f) { return GS_CDN + f; },
       print: function () {},
       printErr: function () {}
     });
-    var data = new Uint8Array(await file.arrayBuffer());
     gs.FS.writeFile('in.pdf', data);
-
-    showStatus(status, 'info', '壓縮運算中…檔案較大時視窗可能短暫沒有回應，請耐心等候。');
-    setProgress(progress, 2, 3, '引擎運算中');
-    await nextFrame();
-
+    var args = ['-sDEVICE=pdfwrite', '-dCompatibilityLevel=1.4', '-dPDFSETTINGS=' + preset,
+      '-dNOPAUSE', '-dQUIET', '-dBATCH'];
+    if (dpi) {
+      args.push('-dDownsampleColorImages=true', '-dDownsampleGrayImages=true',
+        '-dColorImageResolution=' + dpi, '-dGrayImageResolution=' + dpi,
+        '-dColorImageDownsampleThreshold=1.0', '-dGrayImageDownsampleThreshold=1.0');
+    }
+    args.push('-sOutputFile=out.pdf', 'in.pdf');
     try {
-      var ret = gs.callMain([
-        '-sDEVICE=pdfwrite',
-        '-dCompatibilityLevel=1.4',
-        '-dPDFSETTINGS=' + preset,
-        '-dNOPAUSE', '-dQUIET', '-dBATCH',
-        '-sOutputFile=out.pdf',
-        'in.pdf'
-      ]);
+      var ret = gs.callMain(args);
       if (ret && typeof ret.then === 'function') await ret;
     } catch (e) {
       // Emscripten 在程式正常結束時也可能丟出 ExitStatus，以輸出檔是否存在為準
     }
-
     var out = null;
     try { out = gs.FS.readFile('out.pdf'); } catch (e) {}
     if (!out || out.length === 0) {
       throw new Error('引擎無法處理這個檔案（可能有密碼保護或結構損毀）。可以改用「轉圖壓縮」模式再試一次。');
     }
+    return out;
+  }
+
+  // 用 Ghostscript 執行深度壓縮，回傳壓縮後的 Blob
+  async function runDeepCompress(file, preset, status, progress) {
+    var factory = await loadGsFactory(status);
+    showStatus(status, 'info', '壓縮運算中…檔案較大時視窗可能短暫沒有回應，請耐心等候。');
+    setProgress(progress, 1, 2, '引擎運算中');
+    await nextFrame();
+    var out = await gsCompressOnce(factory, new Uint8Array(await file.arrayBuffer()), preset);
     return new Blob([out], { type: 'application/pdf' });
+  }
+
+  // 指定目標大小：在 TARGET_STEPS（畫質由高到低）裡找第一個不超過上限的設定。
+  // 先試畫質最高的一個（很多檔案這樣就放得下），不行再二分搜尋，最多約 5 次。
+  // 回傳 { blob, step, ok }；ok=false 表示連最小設定都放不下，blob 是最小的結果。
+  async function runTargetCompress(file, targetBytes, status, progress) {
+    var factory = await loadGsFactory(status);
+    var data = new Uint8Array(await file.arrayBuffer());
+    var cache = {};
+    var tries = 0;
+    var n = TARGET_STEPS.length;
+    var maxTries = 1 + Math.ceil(Math.log2(n));
+    async function attempt(i) {
+      if (cache[i]) return cache[i];
+      tries++;
+      var s = TARGET_STEPS[i];
+      showStatus(status, 'info', '第 ' + tries + ' 次嘗試：' + targetStepLabel(s) +
+        '…（檔案較大時視窗可能短暫沒有回應，請耐心等候）');
+      setProgress(progress, tries - 1, maxTries, '尋找最佳設定');
+      await nextFrame();
+      cache[i] = await gsCompressOnce(factory, data, s.preset, s.dpi);
+      return cache[i];
+    }
+    if ((await attempt(0)).length <= targetBytes) return { bytes: cache[0], step: TARGET_STEPS[0], ok: true };
+    // 二分搜尋：lo 已知超過上限；hi 已知不超過（hi === n 代表還沒找到任何放得下的）
+    var lo = 0, hi = n;
+    while (hi - lo > 1) {
+      var mid = (lo + hi) >> 1;
+      if ((await attempt(mid)).length <= targetBytes) hi = mid; else lo = mid;
+    }
+    if (hi === n) return { bytes: cache[n - 1], step: TARGET_STEPS[n - 1], ok: false }; // 連最小設定都放不下
+    return { bytes: cache[hi], step: TARGET_STEPS[hi], ok: true };
   }
 
   setupDropZone($('compressDrop'), $('compressInput'), async function (files) {
@@ -3594,6 +4785,43 @@
     }
     var mode = $('compressMode').value;
     var levelKey = $('compressLevel').value;
+
+    if (isTargetMode()) {
+      var targetBytes = compressTargetBytes();
+      var targetText = $('compressTarget').value + ' MB';
+      if (!targetBytes) {
+        showStatus(status, 'error', '請輸入大於 0 的大小上限。');
+        return;
+      }
+      if (compressFile.size <= targetBytes) {
+        showStatus(status, 'info', '原檔 ' + formatSize(compressFile.size) + ' 已經在上限 ' + targetText +
+          ' 以內，不需要壓縮，直接使用原檔畫質最好。');
+        return;
+      }
+      $('compressBtn').disabled = true;
+      try {
+        var r = await runTargetCompress(compressFile, targetBytes, status, progress);
+        var tBlob = new Blob([r.bytes], { type: 'application/pdf' });
+        compressResult = { blob: tBlob, filename: compressFile.name.replace(/\.pdf$/i, '') + '_壓縮.pdf' };
+        var tBtn = $('compressDownloadBtn');
+        tBtn.textContent = '⬇ 下載壓縮後的 PDF（' + formatSize(tBlob.size) + '）';
+        tBtn.style.display = 'block';
+        if (r.ok) {
+          showStatus(status, 'success', '✅ 已壓到 ' + formatSize(tBlob.size) + '（上限 ' + targetText + ' 以內）。' +
+            '使用的設定：' + targetStepLabel(r.step) + '；文字與向量圖未受影響。');
+        } else {
+          showStatus(status, 'error', '⚠️ 最小只能壓到 ' + formatSize(tBlob.size) + '，還是超過上限 ' + targetText +
+            '。可能是文字、字型或向量圖本身就很大（這些不會被壓縮）。下方仍可下載這個最小的版本；' +
+            '也可以改用「轉圖壓縮」，但文字會變成無法選取的圖片。');
+        }
+      } catch (err) {
+        showStatus(status, 'error', '壓縮失敗：' + err.message);
+      } finally {
+        hideProgress(progress);
+        $('compressBtn').disabled = false;
+      }
+      return;
+    }
 
     // 轉圖模式逐頁處理較耗時，頁數太多時先確認
     if (mode === 'raster') {
